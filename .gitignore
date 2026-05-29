@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode
+xcuserdata/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+*.moved-aside
+*.xccheckout
+*.xcscmblueprint
+
+# Build artifacts
+build/
+DerivedData/
+*.o
+*.d
+
+# CocoaPods (if used)
+Pods/
+
+# Python
+__pycache__/
+*.pyc

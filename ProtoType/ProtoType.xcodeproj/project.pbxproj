@@ -1,0 +1,759 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		02020F482FABB5EA000B3D50 /* PrototypeKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 02020F412FABB5EA000B3D50 /* PrototypeKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		02020F202FABB239000B3D50 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 02020F082FABB237000B3D50 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 02020F0F2FABB237000B3D50;
+			remoteInfo = ProtoType;
+		};
+		02020F2A2FABB239000B3D50 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 02020F082FABB237000B3D50 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 02020F0F2FABB237000B3D50;
+			remoteInfo = ProtoType;
+		};
+		02020F462FABB5EA000B3D50 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 02020F082FABB237000B3D50 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 02020F402FABB5EA000B3D50;
+			remoteInfo = PrototypeKeyboard;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		02020F4D2FABB5EA000B3D50 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				02020F482FABB5EA000B3D50 /* PrototypeKeyboard.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		02020F102FABB237000B3D50 /* ProtoType.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ProtoType.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		02020F1F2FABB239000B3D50 /* ProtoTypeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ProtoTypeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		02020F292FABB239000B3D50 /* ProtoTypeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ProtoTypeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		02020F412FABB5EA000B3D50 /* PrototypeKeyboard.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PrototypeKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		02020F492FABB5EA000B3D50 /* Exceptions for "PrototypeKeyboard" folder in "PrototypeKeyboard" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 02020F402FABB5EA000B3D50 /* PrototypeKeyboard */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		02020F122FABB237000B3D50 /* ProtoType */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ProtoType;
+			sourceTree = "<group>";
+		};
+		02020F222FABB239000B3D50 /* ProtoTypeTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ProtoTypeTests;
+			sourceTree = "<group>";
+		};
+		02020F2C2FABB239000B3D50 /* ProtoTypeUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ProtoTypeUITests;
+			sourceTree = "<group>";
+		};
+		02020F422FABB5EA000B3D50 /* PrototypeKeyboard */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				02020F492FABB5EA000B3D50 /* Exceptions for "PrototypeKeyboard" folder in "PrototypeKeyboard" target */,
+			);
+			path = PrototypeKeyboard;
+			sourceTree = "<group>";
+		};
+		BEEF000000000000000A0001 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		02020F0D2FABB237000B3D50 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		02020F1C2FABB239000B3D50 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		02020F262FABB239000B3D50 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		02020F3E2FABB5EA000B3D50 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		02020F072FABB237000B3D50 = {
+			isa = PBXGroup;
+			children = (
+				02020F122FABB237000B3D50 /* ProtoType */,
+				02020F222FABB239000B3D50 /* ProtoTypeTests */,
+				02020F2C2FABB239000B3D50 /* ProtoTypeUITests */,
+				02020F422FABB5EA000B3D50 /* PrototypeKeyboard */,
+				BEEF000000000000000A0001 /* Shared */,
+				02020F112FABB237000B3D50 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		02020F112FABB237000B3D50 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				02020F102FABB237000B3D50 /* ProtoType.app */,
+				02020F1F2FABB239000B3D50 /* ProtoTypeTests.xctest */,
+				02020F292FABB239000B3D50 /* ProtoTypeUITests.xctest */,
+				02020F412FABB5EA000B3D50 /* PrototypeKeyboard.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		02020F0F2FABB237000B3D50 /* ProtoType */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 02020F332FABB239000B3D50 /* Build configuration list for PBXNativeTarget "ProtoType" */;
+			buildPhases = (
+				02020F0C2FABB237000B3D50 /* Sources */,
+				02020F0D2FABB237000B3D50 /* Frameworks */,
+				02020F0E2FABB237000B3D50 /* Resources */,
+				02020F4D2FABB5EA000B3D50 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				02020F472FABB5EA000B3D50 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				02020F122FABB237000B3D50 /* ProtoType */,
+				BEEF000000000000000A0001 /* Shared */,
+			);
+			name = ProtoType;
+			packageProductDependencies = (
+			);
+			productName = ProtoType;
+			productReference = 02020F102FABB237000B3D50 /* ProtoType.app */;
+			productType = "com.apple.product-type.application";
+		};
+		02020F1E2FABB239000B3D50 /* ProtoTypeTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 02020F362FABB239000B3D50 /* Build configuration list for PBXNativeTarget "ProtoTypeTests" */;
+			buildPhases = (
+				02020F1B2FABB239000B3D50 /* Sources */,
+				02020F1C2FABB239000B3D50 /* Frameworks */,
+				02020F1D2FABB239000B3D50 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				02020F212FABB239000B3D50 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				02020F222FABB239000B3D50 /* ProtoTypeTests */,
+			);
+			name = ProtoTypeTests;
+			packageProductDependencies = (
+			);
+			productName = ProtoTypeTests;
+			productReference = 02020F1F2FABB239000B3D50 /* ProtoTypeTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		02020F282FABB239000B3D50 /* ProtoTypeUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 02020F392FABB239000B3D50 /* Build configuration list for PBXNativeTarget "ProtoTypeUITests" */;
+			buildPhases = (
+				02020F252FABB239000B3D50 /* Sources */,
+				02020F262FABB239000B3D50 /* Frameworks */,
+				02020F272FABB239000B3D50 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				02020F2B2FABB239000B3D50 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				02020F2C2FABB239000B3D50 /* ProtoTypeUITests */,
+			);
+			name = ProtoTypeUITests;
+			packageProductDependencies = (
+			);
+			productName = ProtoTypeUITests;
+			productReference = 02020F292FABB239000B3D50 /* ProtoTypeUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		02020F402FABB5EA000B3D50 /* PrototypeKeyboard */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 02020F4A2FABB5EA000B3D50 /* Build configuration list for PBXNativeTarget "PrototypeKeyboard" */;
+			buildPhases = (
+				02020F3D2FABB5EA000B3D50 /* Sources */,
+				02020F3E2FABB5EA000B3D50 /* Frameworks */,
+				02020F3F2FABB5EA000B3D50 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				02020F422FABB5EA000B3D50 /* PrototypeKeyboard */,
+				BEEF000000000000000A0001 /* Shared */,
+			);
+			name = PrototypeKeyboard;
+			packageProductDependencies = (
+			);
+			productName = PrototypeKeyboard;
+			productReference = 02020F412FABB5EA000B3D50 /* PrototypeKeyboard.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		02020F082FABB237000B3D50 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2640;
+				LastUpgradeCheck = 2640;
+				TargetAttributes = {
+					02020F0F2FABB237000B3D50 = {
+						CreatedOnToolsVersion = 26.4.1;
+					};
+					02020F1E2FABB239000B3D50 = {
+						CreatedOnToolsVersion = 26.4.1;
+						TestTargetID = 02020F0F2FABB237000B3D50;
+					};
+					02020F282FABB239000B3D50 = {
+						CreatedOnToolsVersion = 26.4.1;
+						TestTargetID = 02020F0F2FABB237000B3D50;
+					};
+					02020F402FABB5EA000B3D50 = {
+						CreatedOnToolsVersion = 26.4.1;
+					};
+				};
+			};
+			buildConfigurationList = 02020F0B2FABB237000B3D50 /* Build configuration list for PBXProject "ProtoType" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 02020F072FABB237000B3D50;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 02020F112FABB237000B3D50 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				02020F0F2FABB237000B3D50 /* ProtoType */,
+				02020F1E2FABB239000B3D50 /* ProtoTypeTests */,
+				02020F282FABB239000B3D50 /* ProtoTypeUITests */,
+				02020F402FABB5EA000B3D50 /* PrototypeKeyboard */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		02020F0E2FABB237000B3D50 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		02020F1D2FABB239000B3D50 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		02020F272FABB239000B3D50 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		02020F3F2FABB5EA000B3D50 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		02020F0C2FABB237000B3D50 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		02020F1B2FABB239000B3D50 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		02020F252FABB239000B3D50 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		02020F3D2FABB5EA000B3D50 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		02020F212FABB239000B3D50 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 02020F0F2FABB237000B3D50 /* ProtoType */;
+			targetProxy = 02020F202FABB239000B3D50 /* PBXContainerItemProxy */;
+		};
+		02020F2B2FABB239000B3D50 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 02020F0F2FABB237000B3D50 /* ProtoType */;
+			targetProxy = 02020F2A2FABB239000B3D50 /* PBXContainerItemProxy */;
+		};
+		02020F472FABB5EA000B3D50 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 02020F402FABB5EA000B3D50 /* PrototypeKeyboard */;
+			targetProxy = 02020F462FABB5EA000B3D50 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		02020F312FABB239000B3D50 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 7KQ7FD9TAX;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		02020F322FABB239000B3D50 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 7KQ7FD9TAX;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		02020F342FABB239000B3D50 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = ProtoType/ProtoType.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7KQ7FD9TAX;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.prototype.app.ProtoType;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		02020F352FABB239000B3D50 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = ProtoType/ProtoType.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7KQ7FD9TAX;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.prototype.app.ProtoType;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		02020F372FABB239000B3D50 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7KQ7FD9TAX;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.prototype.app.ProtoTypeTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ProtoType.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ProtoType";
+			};
+			name = Debug;
+		};
+		02020F382FABB239000B3D50 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7KQ7FD9TAX;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.prototype.app.ProtoTypeTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ProtoType.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ProtoType";
+			};
+			name = Release;
+		};
+		02020F3A2FABB239000B3D50 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7KQ7FD9TAX;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.prototype.app.ProtoTypeUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = ProtoType;
+			};
+			name = Debug;
+		};
+		02020F3B2FABB239000B3D50 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7KQ7FD9TAX;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.prototype.app.ProtoTypeUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = ProtoType;
+			};
+			name = Release;
+		};
+		02020F4B2FABB5EA000B3D50 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = PrototypeKeyboard/PrototypeKeyboard.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7KQ7FD9TAX;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PrototypeKeyboard/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PrototypeKeyboard;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.prototype.app.ProtoType.PrototypeKeyboard;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		02020F4C2FABB5EA000B3D50 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = PrototypeKeyboard/PrototypeKeyboard.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 7KQ7FD9TAX;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PrototypeKeyboard/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PrototypeKeyboard;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.prototype.app.ProtoType.PrototypeKeyboard;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		02020F0B2FABB237000B3D50 /* Build configuration list for PBXProject "ProtoType" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				02020F312FABB239000B3D50 /* Debug */,
+				02020F322FABB239000B3D50 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		02020F332FABB239000B3D50 /* Build configuration list for PBXNativeTarget "ProtoType" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				02020F342FABB239000B3D50 /* Debug */,
+				02020F352FABB239000B3D50 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		02020F362FABB239000B3D50 /* Build configuration list for PBXNativeTarget "ProtoTypeTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				02020F372FABB239000B3D50 /* Debug */,
+				02020F382FABB239000B3D50 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		02020F392FABB239000B3D50 /* Build configuration list for PBXNativeTarget "ProtoTypeUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				02020F3A2FABB239000B3D50 /* Debug */,
+				02020F3B2FABB239000B3D50 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		02020F4A2FABB5EA000B3D50 /* Build configuration list for PBXNativeTarget "PrototypeKeyboard" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				02020F4B2FABB5EA000B3D50 /* Debug */,
+				02020F4C2FABB5EA000B3D50 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 02020F082FABB237000B3D50 /* Project object */;
+}
