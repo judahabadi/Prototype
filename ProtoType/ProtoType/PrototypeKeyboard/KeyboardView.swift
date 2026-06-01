@@ -137,8 +137,11 @@ struct KeyboardView: View {
             LanguagePickerView(state: state, predictionEngine: predictionEngine)
         }
         .onAppear {
-            evaluateAutoCapAtStart()
+            evaluateAutoCap()
             refreshPasteAvailable()
+        }
+        .onChange(of: state.contextSignal) {
+            evaluateAutoCap()
         }
     }
 
@@ -234,7 +237,7 @@ struct KeyboardView: View {
         if shouldPredict {
             state.predictions = predictionEngine.topPredictions()
         }
-        evaluateAutoCapAfterContextChange()
+        evaluateAutoCap()
     }
 
     private func selectionTranslateChip(selection: String) -> some View {
@@ -334,7 +337,7 @@ struct KeyboardView: View {
 
         state.currentPartial = ""
         state.predictions = predictionEngine.topPredictions()
-        evaluateAutoCapAfterContextChange()
+        evaluateAutoCap()
     }
 
     private var isCursorMidWord: Bool {
@@ -867,7 +870,7 @@ struct KeyboardView: View {
             if shouldPredict {
                 state.predictions = predictionEngine.topPredictions()
             }
-            evaluateAutoCapAfterContextChange()
+            evaluateAutoCap()
             return
         }
 
@@ -885,7 +888,7 @@ struct KeyboardView: View {
         proxy?.playInputClick()
         state.currentPartial = ""
 
-        evaluateAutoCapAfterContextChange()
+        evaluateAutoCap()
 
         guard !finalWord.isEmpty, shouldPredict else {
             if shouldPredict {
@@ -932,41 +935,23 @@ struct KeyboardView: View {
 
     /// Sets shiftOnce based on the current text context, respecting the
     /// host field's autocapitalizationType.
-    private func evaluateAutoCapAfterContextChange() {
+    private func evaluateAutoCap() {
+        guard state.currentPartial.isEmpty else { return }
+        let ctx = proxy?.documentContextBeforeInput ?? ""
         switch autocapPolicy {
         case .none:
             state.shiftOnce = false
-            return
         case .all:
             state.capsLock = true
-            return
         case .words:
             state.shiftOnce = true
         case .sentences:
-            let ctx = proxy?.documentContextBeforeInput ?? ""
-            if ctx.isEmpty {
-                state.shiftOnce = true
-                return
-            }
-            if ctx.hasSuffix(". ") || ctx.hasSuffix("! ") || ctx.hasSuffix("? ")
+            if ctx.isEmpty
+                || ctx.hasSuffix(". ")
+                || ctx.hasSuffix("! ")
+                || ctx.hasSuffix("? ")
                 || ctx.hasSuffix("\n") {
                 state.shiftOnce = true
-            }
-        }
-    }
-
-    private func evaluateAutoCapAtStart() {
-        switch autocapPolicy {
-        case .none:
-            state.shiftOnce = false
-        case .all:
-            state.capsLock = true
-        case .words, .sentences:
-            if state.currentPartial.isEmpty {
-                let ctx = proxy?.documentContextBeforeInput ?? ""
-                if ctx.isEmpty {
-                    state.shiftOnce = true
-                }
             }
         }
     }

@@ -12,6 +12,7 @@ final class KeyboardState {
     var isSymbolMode: Bool = false
     var isExtendedSymbols: Bool = false
     var currentPartial: String = ""
+    var contextSignal: Int = 0
 
     init(native: Language, target: Language) {
         self.nativeLanguage = native

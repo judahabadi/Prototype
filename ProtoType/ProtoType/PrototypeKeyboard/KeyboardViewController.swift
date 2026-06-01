@@ -52,6 +52,7 @@ final class KeyboardViewController: UIInputViewController, KeyboardProxy, UIInpu
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         reloadLexicon()
+        state.contextSignal += 1
     }
 
     private func reloadLexicon() {
@@ -66,6 +67,7 @@ final class KeyboardViewController: UIInputViewController, KeyboardProxy, UIInpu
 
     override func textDidChange(_ textInput: UITextInput?) {
         super.textDidChange(textInput)
+        state.contextSignal += 1
     }
 
     func insertText(_ text: String) {
