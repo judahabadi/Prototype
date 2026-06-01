@@ -1,10 +1,11 @@
 import UIKit
 import SwiftUI
 
-final class KeyboardViewController: UIInputViewController, KeyboardProxy {
+final class KeyboardViewController: UIInputViewController, KeyboardProxy, UIInputViewAudioFeedback {
     private var state: KeyboardState!
     private var hosting: UIHostingController<KeyboardView>!
     private var predictionEngine: PredictionEngine!
+    private var lexicon: [String: String] = [:]
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -44,6 +45,23 @@ final class KeyboardViewController: UIInputViewController, KeyboardProxy {
             host.view.topAnchor.constraint(equalTo: self.view.topAnchor),
             host.view.bottomAnchor.constraint(equalTo: self.view.bottomAnchor)
         ])
+
+        reloadLexicon()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        reloadLexicon()
+    }
+
+    private func reloadLexicon() {
+        requestSupplementaryLexicon { [weak self] lex in
+            var map: [String: String] = [:]
+            for entry in lex.entries {
+                map[entry.userInput.lowercased()] = entry.documentText
+            }
+            self?.lexicon = map
+        }
     }
 
     override func textDidChange(_ textInput: UITextInput?) {
@@ -56,6 +74,14 @@ final class KeyboardViewController: UIInputViewController, KeyboardProxy {
 
     func deleteBackward() {
         textDocumentProxy.deleteBackward()
+    }
+
+    func playInputClick() {
+        UIDevice.current.playInputClick()
+    }
+
+    func textReplacement(for input: String) -> String? {
+        lexicon[input.lowercased()]
     }
 
     override func advanceToNextInputMode() {
@@ -77,4 +103,6 @@ final class KeyboardViewController: UIInputViewController, KeyboardProxy {
     var returnKeyType: UIReturnKeyType {
         textDocumentProxy.returnKeyType ?? .default
     }
+
+    var enableInputClicksWhenVisible: Bool { true }
 }

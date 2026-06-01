@@ -10,8 +10,10 @@ struct KeyboardView: View {
     @State private var lastSpaceTapTime: Date? = nil
     @State private var lastShiftTapTime: Date? = nil
     @State private var deleteTimer: Timer? = nil
+    @State private var previewKey: String? = nil
+    @State private var previewFrame: CGRect = .zero
 
-    private let haptic = UIImpactFeedbackGenerator(style: .light)
+    private static let keyboardSpace = "kb"
 
     private var isRTL: Bool {
         state.nativeLanguage.isRTL || state.targetLanguage.isRTL
@@ -27,22 +29,24 @@ struct KeyboardView: View {
     private static let keyFont = Font.system(size: 23, weight: .regular)
     private static let funcKeyFont = Font.system(size: 16, weight: .regular)
     private static let cornerRadius: CGFloat = 5
-    private static let keyHeight: CGFloat = 42
-    private static let rowSpacing: CGFloat = 11
+    private static let keyHeight: CGFloat = 46
+    private static let rowSpacing: CGFloat = 12
     private static let keySpacing: CGFloat = 6
+    private static let horizontalPadding: CGFloat = 3
 
     var body: some View {
         VStack(spacing: 0) {
             predictionBar
-                .frame(height: 36)
+                .frame(height: 44)
                 .padding(.all, 0)
                 .background(Self.board)
             keyboardArea
                 .padding(.top, Self.rowSpacing)
-                .padding(.bottom, 6)
-                .padding(.horizontal, 3)
+                .padding(.bottom, 8)
+                .padding(.horizontal, Self.horizontalPadding)
         }
         .background(Self.board)
+        .coordinateSpace(name: Self.keyboardSpace)
         .clipShape(
             UnevenRoundedRectangle(
                 topLeadingRadius: 10,
@@ -51,6 +55,17 @@ struct KeyboardView: View {
                 topTrailingRadius: 10
             )
         )
+        .overlay(alignment: .topLeading) {
+            if let key = previewKey, previewFrame != .zero {
+                KeyPreviewBubble(text: key.uppercased())
+                    .frame(width: previewFrame.width * 1.5,
+                           height: previewFrame.height * 1.8)
+                    .position(x: previewFrame.midX,
+                              y: previewFrame.minY - previewFrame.height * 0.55)
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+            }
+        }
         .sheet(isPresented: $state.showLanguagePicker) {
             LanguagePickerView(state: state, predictionEngine: predictionEngine)
         }
@@ -139,7 +154,7 @@ struct KeyboardView: View {
         let toInsert = useTranslation ? raw : applyCapitalization(raw)
         proxy?.insertText(toInsert)
         proxy?.insertText(" ")
-        haptic.impactOccurred()
+        proxy?.playInputClick()
 
         state.currentPartial = ""
         state.predictions = predictionEngine.topPredictions()
@@ -148,13 +163,25 @@ struct KeyboardView: View {
 
     // MARK: - Keyboard rows
 
+    private static let letterRowCount: CGFloat = 4 // 3 letter rows + bottom
+    private static var keyboardAreaHeight: CGFloat {
+        keyHeight * letterRowCount + rowSpacing * (letterRowCount - 1)
+    }
+
     @ViewBuilder
     private var keyboardArea: some View {
-        if state.isSymbolMode {
-            symbolLayout
-        } else {
-            letterLayout
+        GeometryReader { geo in
+            let keyWidth = max(
+                10,
+                (geo.size.width - Self.keySpacing * 9) / 10
+            )
+            if state.isSymbolMode {
+                symbolLayout(keyWidth: keyWidth)
+            } else {
+                letterLayout(keyWidth: keyWidth)
+            }
         }
+        .frame(height: Self.keyboardAreaHeight)
     }
 
     private var keyboardLayout: [[String]] {
@@ -186,29 +213,32 @@ struct KeyboardView: View {
         }
     }
 
-    private var letterLayout: some View {
+    private func letterLayout(keyWidth: CGFloat) -> some View {
         let rows = keyboardLayout
         let rtl = state.nativeLanguage.isRTL
+        let indent = (keyWidth + Self.keySpacing) / 2
+        let funcWidth = keyWidth * 1.5
         return VStack(spacing: Self.rowSpacing) {
             HStack(spacing: Self.keySpacing) {
                 ForEach(rtl ? rows[0].reversed() : rows[0], id: \.self) { letterKey($0) }
             }
             HStack(spacing: Self.keySpacing) {
-                Spacer().frame(width: 16)
+                Spacer().frame(width: indent)
                 ForEach(rtl ? rows[1].reversed() : rows[1], id: \.self) { letterKey($0) }
-                Spacer().frame(width: 16)
+                Spacer().frame(width: indent)
             }
             HStack(spacing: Self.keySpacing) {
-                shiftKey
+                shiftKey(width: funcWidth)
                 ForEach(rtl ? rows[2].reversed() : rows[2], id: \.self) { letterKey($0) }
-                deleteKey
+                deleteKey(width: funcWidth)
             }
-            bottomRow
+            bottomRow(keyWidth: keyWidth)
         }
     }
 
-    private var symbolLayout: some View {
-        VStack(spacing: Self.rowSpacing) {
+    private func symbolLayout(keyWidth: CGFloat) -> some View {
+        let funcWidth = keyWidth * 1.5
+        return VStack(spacing: Self.rowSpacing) {
             if state.isExtendedSymbols {
                 HStack(spacing: Self.keySpacing) {
                     ForEach(["[","]","{","}","#","%","^","*","+","="], id: \.self) { letterKey($0) }
@@ -217,9 +247,9 @@ struct KeyboardView: View {
                     ForEach(["_","\\","|","~","<",">","€","£","¥","•"], id: \.self) { letterKey($0) }
                 }
                 HStack(spacing: Self.keySpacing) {
-                    altSymbolToggle("123")
+                    altSymbolToggle("123", width: funcWidth)
                     ForEach([".", ",", "?", "!", "'", "\""], id: \.self) { letterKey($0) }
-                    deleteKey
+                    deleteKey(width: funcWidth)
                 }
             } else {
                 HStack(spacing: Self.keySpacing) {
@@ -229,12 +259,12 @@ struct KeyboardView: View {
                     ForEach(["-","/",":",";","(",")","$","&","@","\""], id: \.self) { letterKey($0) }
                 }
                 HStack(spacing: Self.keySpacing) {
-                    altSymbolToggle("#+=")
+                    altSymbolToggle("#+=", width: funcWidth)
                     ForEach([".", ",", "?", "!", "'"], id: \.self) { letterKey($0) }
-                    deleteKey
+                    deleteKey(width: funcWidth)
                 }
             }
-            bottomRow
+            bottomRow(keyWidth: keyWidth)
         }
     }
 
@@ -258,7 +288,7 @@ struct KeyboardView: View {
                 toInsert = ch
             }
             proxy?.insertText(toInsert)
-            haptic.impactOccurred()
+            proxy?.playInputClick()
 
             if isLetter {
                 state.predictions = predictionEngine.predictions(for: state.currentPartial)
@@ -274,6 +304,25 @@ struct KeyboardView: View {
         .buttonStyle(.plain)
         .scaleEffect(pressedKey == id ? 0.95 : 1.0)
         .frame(minHeight: 44)
+        .background(
+            GeometryReader { g in
+                Color.clear
+                    .onChange(of: previewKey) { _, newValue in
+                        if newValue == ch {
+                            previewFrame = g.frame(in: .named(Self.keyboardSpace))
+                        }
+                    }
+            }
+        )
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in
+                    if previewKey != ch { previewKey = ch }
+                }
+                .onEnded { _ in
+                    if previewKey == ch { previewKey = nil }
+                }
+        )
     }
 
     private func displayChar(_ ch: String) -> String {
@@ -281,7 +330,7 @@ struct KeyboardView: View {
         return (state.capsLock || state.shiftOnce) ? ch.uppercased() : ch
     }
 
-    private var shiftKey: some View {
+    private func shiftKey(width: CGFloat) -> some View {
         let id = "key.shift"
         return Button {
             flashKey(id)
@@ -298,12 +347,12 @@ struct KeyboardView: View {
                 state.shiftOnce.toggle()
                 lastShiftTapTime = now
             }
-            haptic.impactOccurred()
+            proxy?.playInputClick()
         } label: {
             Image(systemName: state.capsLock ? "capslock.fill" : (state.shiftOnce ? "shift.fill" : "shift"))
                 .font(Self.funcKeyFont)
                 .foregroundStyle(Self.keyText)
-                .frame(width: 42, height: Self.keyHeight)
+                .frame(width: width, height: Self.keyHeight)
                 .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
                 .contentShape(Rectangle())
         }
@@ -312,12 +361,12 @@ struct KeyboardView: View {
         .frame(minHeight: 44)
     }
 
-    private var deleteKey: some View {
+    private func deleteKey(width: CGFloat) -> some View {
         let id = "key.delete"
         return Image(systemName: "delete.left")
             .font(Self.funcKeyFont)
             .foregroundStyle(Self.keyText)
-            .frame(width: 42, height: Self.keyHeight)
+            .frame(width: width, height: Self.keyHeight)
             .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
             .contentShape(Rectangle())
             .scaleEffect(pressedKey == id ? 0.95 : 1.0)
@@ -325,7 +374,7 @@ struct KeyboardView: View {
             .onTapGesture {
                 flashKey(id)
                 performDelete()
-                haptic.impactOccurred()
+                proxy?.playInputClick()
             }
             .simultaneousGesture(
                 LongPressGesture(minimumDuration: 0.5)
@@ -358,7 +407,7 @@ struct KeyboardView: View {
 
     private func startDeleteRepeating() {
         deleteTimer?.invalidate()
-        haptic.impactOccurred()
+        proxy?.playInputClick()
         deleteTimer = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { _ in
             DispatchQueue.main.async {
                 proxy?.deleteBackward()
@@ -377,17 +426,17 @@ struct KeyboardView: View {
             : predictionEngine.predictions(for: state.currentPartial)
     }
 
-    private func altSymbolToggle(_ label: String) -> some View {
+    private func altSymbolToggle(_ label: String, width: CGFloat) -> some View {
         let id = "key.alt.\(label)"
         return Button {
             flashKey(id)
             state.isExtendedSymbols.toggle()
-            haptic.impactOccurred()
+            proxy?.playInputClick()
         } label: {
             Text(label)
                 .font(Self.funcKeyFont)
                 .foregroundStyle(Self.keyText)
-                .frame(width: 42, height: Self.keyHeight)
+                .frame(width: width, height: Self.keyHeight)
                 .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
                 .contentShape(Rectangle())
         }
@@ -398,30 +447,30 @@ struct KeyboardView: View {
 
     // MARK: - Bottom row
 
-    private var bottomRow: some View {
+    private func bottomRow(keyWidth: CGFloat) -> some View {
         HStack(spacing: Self.keySpacing) {
-            modeKey
+            modeKey(width: keyWidth)
             if proxy?.needsInputModeSwitchKey ?? false {
-                globeKey
+                globeKey(width: keyWidth)
             }
-            languagePickerKey
+            languagePickerKey(width: keyWidth)
             spaceKey
-            returnKey
+            returnKey(width: keyWidth * 2)
         }
     }
 
-    private var modeKey: some View {
+    private func modeKey(width: CGFloat) -> some View {
         let id = "key.mode"
         return Button {
             flashKey(id)
             state.isSymbolMode.toggle()
             state.isExtendedSymbols = false
-            haptic.impactOccurred()
+            proxy?.playInputClick()
         } label: {
             Text(state.isSymbolMode ? "ABC" : "123")
                 .font(Self.funcKeyFont)
                 .foregroundStyle(Self.keyText)
-                .frame(width: 42, height: Self.keyHeight)
+                .frame(width: width, height: Self.keyHeight)
                 .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
                 .contentShape(Rectangle())
         }
@@ -430,16 +479,17 @@ struct KeyboardView: View {
         .frame(minHeight: 44)
     }
 
-    private var globeKey: some View {
+    private func globeKey(width: CGFloat) -> some View {
         let id = "key.globe"
         return Button {
             flashKey(id)
             proxy?.advanceToNextInputMode()
-            haptic.impactOccurred()
+            proxy?.playInputClick()
         } label: {
-            Text(state.targetLanguage.flag)
-                .font(.system(size: 18))
-                .frame(width: 42, height: Self.keyHeight)
+            Image(systemName: "globe")
+                .font(Self.funcKeyFont)
+                .foregroundStyle(Self.keyText)
+                .frame(width: width, height: Self.keyHeight)
                 .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
                 .contentShape(Rectangle())
         }
@@ -448,16 +498,16 @@ struct KeyboardView: View {
         .frame(minHeight: 44)
     }
 
-    private var languagePickerKey: some View {
+    private func languagePickerKey(width: CGFloat) -> some View {
         let id = "key.picker"
         return Button {
             flashKey(id)
             state.showLanguagePicker = true
-            haptic.impactOccurred()
+            proxy?.playInputClick()
         } label: {
             Text(state.targetLanguage.flag)
                 .font(.system(size: 18))
-                .frame(width: 42, height: Self.keyHeight)
+                .frame(width: width, height: Self.keyHeight)
                 .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
                 .contentShape(Rectangle())
         }
@@ -484,7 +534,7 @@ struct KeyboardView: View {
         .frame(minHeight: 44)
     }
 
-    private var returnKey: some View {
+    private func returnKey(width: CGFloat) -> some View {
         let id = "key.return"
         return Button {
             flashKey(id)
@@ -492,12 +542,12 @@ struct KeyboardView: View {
             state.currentPartial = ""
             state.predictions = predictionEngine.topPredictions()
             state.shiftOnce = true
-            haptic.impactOccurred()
+            proxy?.playInputClick()
         } label: {
             Text(returnKeyLabel)
                 .font(Self.funcKeyFont)
                 .foregroundStyle(Self.keyText)
-                .frame(width: 80, height: Self.keyHeight)
+                .frame(width: width, height: Self.keyHeight)
                 .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
                 .contentShape(Rectangle())
         }
@@ -547,7 +597,7 @@ struct KeyboardView: View {
             proxy?.deleteBackward()
             proxy?.insertText(". ")
             state.shiftOnce = true
-            haptic.impactOccurred()
+            proxy?.playInputClick()
             lastSpaceTapTime = nil
             state.currentPartial = ""
             state.predictions = predictionEngine.topPredictions()
@@ -557,6 +607,18 @@ struct KeyboardView: View {
 
         let raw = state.currentPartial
         let cleaned = raw.lowercased().trimmingCharacters(in: .punctuationCharacters)
+
+        if !cleaned.isEmpty,
+           let expansion = proxy?.textReplacement(for: cleaned) {
+            for _ in 0..<raw.count { proxy?.deleteBackward() }
+            proxy?.insertText(expansion)
+            proxy?.insertText(" ")
+            proxy?.playInputClick()
+            state.currentPartial = ""
+            state.predictions = predictionEngine.topPredictions()
+            evaluateAutoCapAfterContextChange()
+            return
+        }
 
         var finalWord = cleaned
         if !cleaned.isEmpty {
@@ -569,7 +631,7 @@ struct KeyboardView: View {
         }
 
         proxy?.insertText(" ")
-        haptic.impactOccurred()
+        proxy?.playInputClick()
         state.currentPartial = ""
 
         evaluateAutoCapAfterContextChange()
@@ -651,5 +713,69 @@ struct KeyboardView: View {
             return word.prefix(1).uppercased() + word.dropFirst()
         }
         return word
+    }
+}
+
+// MARK: - Key preview bubble
+
+private struct KeyPreviewBubble: View {
+    let text: String
+
+    var body: some View {
+        GeometryReader { g in
+            let w = g.size.width
+            let h = g.size.height
+            let bubbleH = h * 0.7
+            let tailH = h * 0.3
+            ZStack {
+                BubbleShape(tailHeight: tailH)
+                    .fill(Color(uiColor: .systemBackground))
+                    .shadow(color: .black.opacity(0.25), radius: 3, x: 0, y: 1)
+                Text(text)
+                    .font(.system(size: bubbleH * 0.6, weight: .regular))
+                    .foregroundStyle(Color(uiColor: .label))
+                    .frame(width: w, height: bubbleH, alignment: .center)
+                    .offset(y: -tailH / 2)
+            }
+        }
+    }
+}
+
+private struct BubbleShape: Shape {
+    let tailHeight: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        let topR: CGFloat = 9
+        let bottomR: CGFloat = 5
+        let bubbleBottom = rect.maxY - tailHeight
+
+        // Top-left corner
+        p.move(to: CGPoint(x: rect.minX, y: rect.minY + topR))
+        p.addArc(center: CGPoint(x: rect.minX + topR, y: rect.minY + topR),
+                 radius: topR, startAngle: .degrees(180), endAngle: .degrees(270), clockwise: false)
+        // Top edge to top-right corner
+        p.addLine(to: CGPoint(x: rect.maxX - topR, y: rect.minY))
+        p.addArc(center: CGPoint(x: rect.maxX - topR, y: rect.minY + topR),
+                 radius: topR, startAngle: .degrees(270), endAngle: .degrees(0), clockwise: false)
+        // Right edge to bubble bottom
+        p.addLine(to: CGPoint(x: rect.maxX, y: bubbleBottom - bottomR))
+        p.addArc(center: CGPoint(x: rect.maxX - bottomR, y: bubbleBottom - bottomR),
+                 radius: bottomR, startAngle: .degrees(0), endAngle: .degrees(90), clockwise: false)
+        // Bottom edge with tail dip in center
+        let tailWidth = rect.width * 0.6
+        let tailLeftX = rect.midX - tailWidth / 2
+        let tailRightX = rect.midX + tailWidth / 2
+        p.addLine(to: CGPoint(x: tailRightX, y: bubbleBottom))
+        p.addQuadCurve(to: CGPoint(x: rect.midX, y: rect.maxY),
+                       control: CGPoint(x: tailRightX - tailWidth * 0.15, y: rect.maxY))
+        p.addQuadCurve(to: CGPoint(x: tailLeftX, y: bubbleBottom),
+                       control: CGPoint(x: tailLeftX + tailWidth * 0.15, y: rect.maxY))
+        // Left edge
+        p.addLine(to: CGPoint(x: rect.minX + bottomR, y: bubbleBottom))
+        p.addArc(center: CGPoint(x: rect.minX + bottomR, y: bubbleBottom - bottomR),
+                 radius: bottomR, startAngle: .degrees(90), endAngle: .degrees(180), clockwise: false)
+        p.closeSubpath()
+        return p
     }
 }
