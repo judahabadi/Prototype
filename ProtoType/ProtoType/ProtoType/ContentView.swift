@@ -6,50 +6,53 @@
 //
 
 import SwiftUI
-import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    @State private var nativeLanguage: Language = {
+        let raw = AppGroup.defaults.string(forKey: AppGroup.nativeKey) ?? Language.english.rawValue
+        return Language(rawValue: raw) ?? .english
+    }()
+
+    @State private var targetLanguage: Language = {
+        let raw = AppGroup.defaults.string(forKey: AppGroup.targetKey) ?? Language.spanish.rawValue
+        return Language(rawValue: raw) ?? .spanish
+    }()
 
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
+        NavigationStack {
+            Form {
+                Section("I speak") {
+                    Picker("Native language", selection: $nativeLanguage) {
+                        ForEach(Language.allCases) { lang in
+                            Text("\(lang.flag) \(lang.displayName)").tag(lang)
+                        }
                     }
                 }
-                .onDelete(perform: deleteItems)
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
+
+                Section("I want to learn") {
+                    Picker("Target language", selection: $targetLanguage) {
+                        ForEach(Language.allCases) { lang in
+                            Text("\(lang.flag) \(lang.displayName)").tag(lang)
+                        }
                     }
                 }
+
+                Section("Setup") {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("1. Settings → General → Keyboard → Keyboards")
+                        Text("2. Tap \"Add New Keyboard\" → ProtoType")
+                        Text("3. Enable Full Access")
+                    }
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                }
             }
-        } detail: {
-            Text("Select an item")
-        }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
+            .navigationTitle("Prototype")
+            .onChange(of: nativeLanguage) { _, new in
+                AppGroup.defaults.set(new.rawValue, forKey: AppGroup.nativeKey)
+            }
+            .onChange(of: targetLanguage) { _, new in
+                AppGroup.defaults.set(new.rawValue, forKey: AppGroup.targetKey)
             }
         }
     }
@@ -57,5 +60,4 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
 }
