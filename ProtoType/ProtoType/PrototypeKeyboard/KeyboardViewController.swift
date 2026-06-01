@@ -10,6 +10,7 @@ final class KeyboardViewController: UIInputViewController, KeyboardProxy {
         super.viewDidLoad()
 
         let defaults = AppGroup.defaults
+        defaults.set(true, forKey: "keyboardDidLoad")
         let nativeRaw = defaults.string(forKey: AppGroup.nativeKey) ?? Language.english.rawValue
         let targetRaw = defaults.string(forKey: AppGroup.targetKey) ?? Language.spanish.rawValue
         let native = Language(rawValue: nativeRaw) ?? .english
