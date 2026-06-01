@@ -90,20 +90,22 @@ struct KeyboardView: View {
     }
 
     // Native iOS keyboard palette (matches the stock keyboard in light + dark).
+    // Hierarchy: board (darkest) → funcKey → letterKey (white, lightest).
+    // funcKey must be LIGHTER than board so function keys appear raised, not sunken.
     private static func dynamic(light: UIColor, dark: UIColor) -> Color {
         Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? dark : light })
     }
     private static let board = dynamic(
-        light: UIColor(red: 209/255, green: 211/255, blue: 217/255, alpha: 1),
-        dark: UIColor(red: 43/255, green: 43/255, blue: 43/255, alpha: 1)
+        light: UIColor(red: 209/255, green: 212/255, blue: 220/255, alpha: 1), // #D1D4DC
+        dark: UIColor(red: 33/255, green: 33/255, blue: 33/255, alpha: 1)      // #212121
     )
     private static let letterKeyColor = dynamic(
         light: .white,
-        dark: UIColor(red: 106/255, green: 106/255, blue: 106/255, alpha: 1)
+        dark: UIColor(red: 110/255, green: 110/255, blue: 115/255, alpha: 1)   // #6E6E73
     )
     private static let funcKeyColor = dynamic(
-        light: UIColor(red: 174/255, green: 179/255, blue: 190/255, alpha: 1),
-        dark: UIColor(red: 67/255, green: 67/255, blue: 67/255, alpha: 1)
+        light: UIColor(red: 196/255, green: 199/255, blue: 206/255, alpha: 1), // #C4C7CE — lighter than board
+        dark: UIColor(red: 59/255, green: 59/255, blue: 62/255, alpha: 1)      // #3B3B3E
     )
     private static let keyShadow = Color.black.opacity(0.3)
     private static let keyText = Color(uiColor: .label)
