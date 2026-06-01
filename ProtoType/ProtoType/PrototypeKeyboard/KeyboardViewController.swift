@@ -100,8 +100,40 @@ final class KeyboardViewController: UIInputViewController, KeyboardProxy, UIInpu
         textDocumentProxy.documentContextBeforeInput
     }
 
+    var documentContextAfterInput: String? {
+        textDocumentProxy.documentContextAfterInput
+    }
+
+    var selectedText: String? {
+        textDocumentProxy.selectedText
+    }
+
     var returnKeyType: UIReturnKeyType {
         textDocumentProxy.returnKeyType ?? .default
+    }
+
+    var keyboardType: UIKeyboardType {
+        textDocumentProxy.keyboardType ?? .default
+    }
+
+    var autocapitalizationType: UITextAutocapitalizationType {
+        textDocumentProxy.autocapitalizationType ?? .sentences
+    }
+
+    var autocorrectionType: UITextAutocorrectionType {
+        textDocumentProxy.autocorrectionType ?? .default
+    }
+
+    var spellCheckingType: UITextSpellCheckingType {
+        textDocumentProxy.spellCheckingType ?? .default
+    }
+
+    var isSecureTextEntry: Bool {
+        textDocumentProxy.isSecureTextEntry
+    }
+
+    var textContentType: UITextContentType? {
+        textDocumentProxy.textContentType
     }
 
     var enableInputClicksWhenVisible: Bool { true }

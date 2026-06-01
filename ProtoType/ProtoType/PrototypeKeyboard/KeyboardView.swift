@@ -19,6 +19,60 @@ struct KeyboardView: View {
         state.nativeLanguage.isRTL || state.targetLanguage.isRTL
     }
 
+    // MARK: - Field-aware policy
+
+    private enum KeyboardVariant {
+        case standard, numeric, url, email
+    }
+
+    private var keyboardVariant: KeyboardVariant {
+        if proxy?.textContentType == .oneTimeCode { return .numeric }
+        if proxy?.textContentType == .emailAddress { return .email }
+        switch proxy?.keyboardType ?? .default {
+        case .numberPad, .decimalPad, .phonePad, .numbersAndPunctuation, .asciiCapableNumberPad:
+            return .numeric
+        case .URL:
+            return .url
+        case .emailAddress:
+            return .email
+        default:
+            return .standard
+        }
+    }
+
+    private var isSecureField: Bool {
+        proxy?.isSecureTextEntry == true
+            || proxy?.textContentType == .password
+            || proxy?.textContentType == .newPassword
+    }
+
+    private var shouldPredict: Bool {
+        guard !isSecureField else { return false }
+        if proxy?.textContentType == .oneTimeCode { return false }
+        if proxy?.autocorrectionType == .no { return false }
+        return true
+    }
+
+    private var shouldAutocorrect: Bool {
+        guard shouldPredict else { return false }
+        if proxy?.spellCheckingType == .no { return false }
+        if proxy?.autocorrectionType == .no { return false }
+        return true
+    }
+
+    private var shouldExpandReplacement: Bool { shouldPredict }
+
+    private enum AutocapPolicy { case none, words, sentences, all }
+    private var autocapPolicy: AutocapPolicy {
+        switch proxy?.autocapitalizationType ?? .sentences {
+        case .none: return .none
+        case .words: return .words
+        case .allCharacters: return .all
+        case .sentences: return .sentences
+        @unknown default: return .sentences
+        }
+    }
+
     // Adaptive palette
     private static let board = Color(uiColor: .systemGray5)
     private static let letterKeyColor = Color(uiColor: .systemBackground)
@@ -36,10 +90,12 @@ struct KeyboardView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            predictionBar
-                .frame(height: 44)
-                .padding(.all, 0)
-                .background(Self.board)
+            if shouldPredict {
+                predictionBar
+                    .frame(height: 44)
+                    .padding(.all, 0)
+                    .background(Self.board)
+            }
             keyboardArea
                 .padding(.top, Self.rowSpacing)
                 .padding(.bottom, 8)
@@ -76,30 +132,75 @@ struct KeyboardView: View {
 
     // MARK: - Prediction bar
 
+    @ViewBuilder
     private var predictionBar: some View {
-        HStack(spacing: 0) {
-            ForEach(0..<3, id: \.self) { idx in
-                let p = idx < state.predictions.count ? state.predictions[idx] : .empty
-                chipContent(p)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        guard !p.source.isEmpty else { return }
-                        pickPrediction(p, useTranslation: false)
-                    }
-                    .onLongPressGesture(minimumDuration: 0.35) {
-                        guard !p.source.isEmpty, !p.translation.isEmpty else { return }
-                        pickPrediction(p, useTranslation: true)
-                    }
+        if let selection = proxy?.selectedText, !selection.isEmpty {
+            selectionTranslateChip(selection: selection)
+                .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
+        } else {
+            HStack(spacing: 0) {
+                ForEach(0..<3, id: \.self) { idx in
+                    let p = idx < state.predictions.count ? state.predictions[idx] : .empty
+                    chipContent(p)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            guard !p.source.isEmpty else { return }
+                            pickPrediction(p, useTranslation: false)
+                        }
+                        .onLongPressGesture(minimumDuration: 0.35) {
+                            guard !p.source.isEmpty, !p.translation.isEmpty else { return }
+                            pickPrediction(p, useTranslation: true)
+                        }
 
-                if idx < 2 {
-                    Rectangle()
-                        .fill(Color(uiColor: .separator))
-                        .frame(width: 0.33, height: 20)
+                    if idx < 2 {
+                        Rectangle()
+                            .fill(Color(uiColor: .separator))
+                            .frame(width: 0.33, height: 20)
+                    }
                 }
             }
+            .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
         }
-        .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
+    }
+
+    private func selectionTranslateChip(selection: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "character.bubble")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(Color.blue)
+            Text("Translate “\(selection)”")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(Color.blue)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            translateSelection(selection)
+        }
+    }
+
+    private func translateSelection(_ selection: String) {
+        let trimmed = selection.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let local = predictionEngine.translation(for: trimmed.lowercased())
+        if let local, !local.isEmpty {
+            proxy?.insertText(local)
+            proxy?.playInputClick()
+            return
+        }
+        let from = state.nativeLanguage
+        let to = state.targetLanguage
+        Task { [weak proxy] in
+            let result = await TranslationService.shared.translate(word: trimmed, from: from, to: to)
+            await MainActor.run {
+                guard result != "—", !result.isEmpty else { return }
+                proxy?.insertText(result)
+                proxy?.playInputClick()
+            }
+        }
     }
 
     @ViewBuilder
@@ -153,12 +254,21 @@ struct KeyboardView: View {
 
         let toInsert = useTranslation ? raw : applyCapitalization(raw)
         proxy?.insertText(toInsert)
-        proxy?.insertText(" ")
+        if !isCursorMidWord {
+            proxy?.insertText(" ")
+        }
         proxy?.playInputClick()
 
         state.currentPartial = ""
         state.predictions = predictionEngine.topPredictions()
         evaluateAutoCapAfterContextChange()
+    }
+
+    private var isCursorMidWord: Bool {
+        guard let after = proxy?.documentContextAfterInput, let first = after.first else {
+            return false
+        }
+        return first.isLetter || first.isNumber
     }
 
     // MARK: - Keyboard rows
@@ -175,13 +285,21 @@ struct KeyboardView: View {
                 10,
                 (geo.size.width - Self.keySpacing * 9) / 10
             )
-            if state.isSymbolMode {
+            if keyboardVariant == .numeric || state.isSymbolMode {
                 symbolLayout(keyWidth: keyWidth)
             } else {
                 letterLayout(keyWidth: keyWidth)
             }
         }
         .frame(height: Self.keyboardAreaHeight)
+    }
+
+    private var variantAccessory: String? {
+        switch keyboardVariant {
+        case .url: return ".com"
+        case .email: return "@"
+        default: return nil
+        }
     }
 
     private var keyboardLayout: [[String]] {
@@ -277,7 +395,8 @@ struct KeyboardView: View {
             let isLetter = ch.count == 1 && (ch.first?.isLetter ?? false)
             let toInsert: String
             if isLetter {
-                if state.capsLock || state.shiftOnce {
+                let upper = state.capsLock || state.shiftOnce || autocapPolicy == .all
+                if upper {
                     toInsert = ch.uppercased()
                 } else {
                     toInsert = ch
@@ -290,7 +409,7 @@ struct KeyboardView: View {
             proxy?.insertText(toInsert)
             proxy?.playInputClick()
 
-            if isLetter {
+            if isLetter && shouldPredict {
                 state.predictions = predictionEngine.predictions(for: state.currentPartial)
             }
         } label: {
@@ -327,7 +446,8 @@ struct KeyboardView: View {
 
     private func displayChar(_ ch: String) -> String {
         guard ch.count == 1, let c = ch.first, c.isLetter else { return ch }
-        return (state.capsLock || state.shiftOnce) ? ch.uppercased() : ch
+        let upper = state.capsLock || state.shiftOnce || autocapPolicy == .all
+        return upper ? ch.uppercased() : ch
     }
 
     private func shiftKey(width: CGFloat) -> some View {
@@ -454,9 +574,35 @@ struct KeyboardView: View {
                 globeKey(width: keyWidth)
             }
             languagePickerKey(width: keyWidth)
+            if let accessory = variantAccessory {
+                accessoryKey(text: accessory, width: keyWidth * 1.3)
+            }
             spaceKey
             returnKey(width: keyWidth * 2)
         }
+    }
+
+    private func accessoryKey(text: String, width: CGFloat) -> some View {
+        let id = "key.accessory.\(text)"
+        return Button {
+            flashKey(id)
+            proxy?.insertText(text)
+            proxy?.playInputClick()
+            state.currentPartial = ""
+            if shouldPredict {
+                state.predictions = predictionEngine.topPredictions()
+            }
+        } label: {
+            Text(text)
+                .font(Self.funcKeyFont)
+                .foregroundStyle(Self.keyText)
+                .frame(width: width, height: Self.keyHeight)
+                .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .scaleEffect(pressedKey == id ? 0.95 : 1.0)
+        .frame(minHeight: 44)
     }
 
     private func modeKey(width: CGFloat) -> some View {
@@ -609,19 +755,22 @@ struct KeyboardView: View {
         let cleaned = raw.lowercased().trimmingCharacters(in: .punctuationCharacters)
 
         if !cleaned.isEmpty,
+           shouldExpandReplacement,
            let expansion = proxy?.textReplacement(for: cleaned) {
             for _ in 0..<raw.count { proxy?.deleteBackward() }
             proxy?.insertText(expansion)
             proxy?.insertText(" ")
             proxy?.playInputClick()
             state.currentPartial = ""
-            state.predictions = predictionEngine.topPredictions()
+            if shouldPredict {
+                state.predictions = predictionEngine.topPredictions()
+            }
             evaluateAutoCapAfterContextChange()
             return
         }
 
         var finalWord = cleaned
-        if !cleaned.isEmpty {
+        if !cleaned.isEmpty && shouldAutocorrect {
             if let correction = AutocorrectService.correct(word: cleaned, language: state.nativeLanguage),
                correction.lowercased() != cleaned {
                 for _ in 0..<raw.count { proxy?.deleteBackward() }
@@ -636,8 +785,10 @@ struct KeyboardView: View {
 
         evaluateAutoCapAfterContextChange()
 
-        guard !finalWord.isEmpty else {
-            state.predictions = predictionEngine.topPredictions()
+        guard !finalWord.isEmpty, shouldPredict else {
+            if shouldPredict {
+                state.predictions = predictionEngine.topPredictions()
+            }
             return
         }
 
@@ -677,42 +828,69 @@ struct KeyboardView: View {
 
     // MARK: - Auto-cap
 
-    /// Sets shiftOnce based on the current text context (start of input,
-    /// after sentence-ending punctuation + space, or after a newline).
+    /// Sets shiftOnce based on the current text context, respecting the
+    /// host field's autocapitalizationType.
     private func evaluateAutoCapAfterContextChange() {
-        let ctx = proxy?.documentContextBeforeInput ?? ""
-        if ctx.isEmpty {
-            state.shiftOnce = true
+        switch autocapPolicy {
+        case .none:
+            state.shiftOnce = false
             return
-        }
-        if ctx.hasSuffix(". ") || ctx.hasSuffix("! ") || ctx.hasSuffix("? ")
-            || ctx.hasSuffix("\n") {
+        case .all:
+            state.capsLock = true
+            return
+        case .words:
             state.shiftOnce = true
-        }
-    }
-
-    private func evaluateAutoCapAtStart() {
-        if state.currentPartial.isEmpty {
+        case .sentences:
             let ctx = proxy?.documentContextBeforeInput ?? ""
             if ctx.isEmpty {
+                state.shiftOnce = true
+                return
+            }
+            if ctx.hasSuffix(". ") || ctx.hasSuffix("! ") || ctx.hasSuffix("? ")
+                || ctx.hasSuffix("\n") {
                 state.shiftOnce = true
             }
         }
     }
 
-    private func applyCapitalization(_ word: String) -> String {
-        let context = proxy?.documentContextBeforeInput ?? ""
-        let trimmed = context.reversed().drop(while: { $0 == " " })
-        let last = trimmed.first
-        let shouldCap: Bool = {
-            if context.isEmpty { return true }
-            if let last, ".!?".contains(last) { return true }
-            return false
-        }()
-        if shouldCap {
-            return word.prefix(1).uppercased() + word.dropFirst()
+    private func evaluateAutoCapAtStart() {
+        switch autocapPolicy {
+        case .none:
+            state.shiftOnce = false
+        case .all:
+            state.capsLock = true
+        case .words, .sentences:
+            if state.currentPartial.isEmpty {
+                let ctx = proxy?.documentContextBeforeInput ?? ""
+                if ctx.isEmpty {
+                    state.shiftOnce = true
+                }
+            }
         }
-        return word
+    }
+
+    private func applyCapitalization(_ word: String) -> String {
+        switch autocapPolicy {
+        case .none:
+            return word
+        case .all:
+            return word.uppercased()
+        case .words:
+            return word.prefix(1).uppercased() + word.dropFirst()
+        case .sentences:
+            let context = proxy?.documentContextBeforeInput ?? ""
+            let trimmed = context.reversed().drop(while: { $0 == " " })
+            let last = trimmed.first
+            let shouldCap: Bool = {
+                if context.isEmpty { return true }
+                if let last, ".!?".contains(last) { return true }
+                return false
+            }()
+            if shouldCap {
+                return word.prefix(1).uppercased() + word.dropFirst()
+            }
+            return word
+        }
     }
 }
 
