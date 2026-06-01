@@ -10,6 +10,7 @@ protocol KeyboardProxy: AnyObject {
     func textReplacement(for input: String) -> String?
     func adjustTextPosition(byCharacterOffset offset: Int)
     func showInputModeList()
+    func requestExpandedContext(completion: @escaping (_ before: String, _ after: String) -> Void)
     var needsInputModeSwitchKey: Bool { get }
     var documentContextBeforeInput: String? { get }
     var documentContextAfterInput: String? { get }

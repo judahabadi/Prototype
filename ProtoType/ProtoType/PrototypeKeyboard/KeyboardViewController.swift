@@ -100,6 +100,12 @@ final class KeyboardViewController: UIInputViewController, KeyboardProxy, UIInpu
         handleInputModeList(from: view, with: UIEvent())
     }
 
+    func requestExpandedContext(completion: @escaping (String, String) -> Void) {
+        let before = textDocumentProxy.documentContextBeforeInput ?? ""
+        let after = textDocumentProxy.documentContextAfterInput ?? ""
+        completion(before, after)
+    }
+
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         Task { await TranslationService.shared.evict() }

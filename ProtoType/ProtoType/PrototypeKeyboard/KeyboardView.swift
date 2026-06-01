@@ -12,6 +12,7 @@ struct KeyboardView: View {
     @State private var deleteTimer: Timer? = nil
     @State private var previewKey: String? = nil
     @State private var previewFrame: CGRect = .zero
+    @State private var pasteAvailable: Bool = false
 
     private static let keyboardSpace = "kb"
 
@@ -143,7 +144,31 @@ struct KeyboardView: View {
         }
         .onAppear {
             evaluateAutoCapAtStart()
+            refreshPasteAvailable()
         }
+    }
+
+    private func refreshPasteAvailable() {
+        pasteAvailable = UIPasteboard.general.hasStrings
+    }
+
+    private func recentlyTypedWords() -> Set<String> {
+        let before = (proxy?.documentContextBeforeInput ?? "").lowercased()
+        let separators = CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters)
+        return Set(
+            before
+                .components(separatedBy: separators)
+                .filter { !$0.isEmpty && $0.count > 1 }
+        )
+    }
+
+    private func freshPredictions(after committedWord: String) -> [Prediction] {
+        let recent = recentlyTypedWords()
+        let pool = predictionEngine.topPredictions(excluding: committedWord, limit: 10)
+        return pool
+            .filter { !recent.contains($0.source.lowercased()) }
+            .prefix(2)
+            .map { $0 }
     }
 
     // MARK: - Prediction bar
@@ -155,7 +180,16 @@ struct KeyboardView: View {
                 .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
         } else {
             HStack(spacing: 0) {
-                ForEach(0..<3, id: \.self) { idx in
+                let showPaste = pasteAvailable && state.currentPartial.isEmpty
+                if showPaste {
+                    pasteChip
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    Rectangle()
+                        .fill(Color(uiColor: .separator))
+                        .frame(width: 0.33, height: 20)
+                }
+                let chipCount = showPaste ? 2 : 3
+                ForEach(0..<chipCount, id: \.self) { idx in
                     let p = idx < state.predictions.count ? state.predictions[idx] : .empty
                     chipContent(p)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
@@ -169,7 +203,7 @@ struct KeyboardView: View {
                             pickPrediction(p, useTranslation: true)
                         }
 
-                    if idx < 2 {
+                    if idx < chipCount - 1 {
                         Rectangle()
                             .fill(Color(uiColor: .separator))
                             .frame(width: 0.33, height: 20)
@@ -178,6 +212,35 @@ struct KeyboardView: View {
             }
             .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
         }
+    }
+
+    private var pasteChip: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "doc.on.clipboard")
+                .font(.system(size: 13, weight: .medium))
+            Text("Paste")
+                .font(.system(size: 16, weight: .semibold))
+        }
+        .foregroundStyle(Color.blue)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            performPaste()
+        }
+    }
+
+    private func performPaste() {
+        guard let s = UIPasteboard.general.string, !s.isEmpty else {
+            pasteAvailable = false
+            return
+        }
+        proxy?.insertText(s)
+        proxy?.playInputClick()
+        state.currentPartial = ""
+        pasteAvailable = false
+        if shouldPredict {
+            state.predictions = predictionEngine.topPredictions()
+        }
+        evaluateAutoCapAfterContextChange()
     }
 
     private func selectionTranslateChip(selection: String) -> some View {
@@ -855,7 +918,7 @@ struct KeyboardView: View {
             isLoading: localTranslation.isEmpty
         )
         var combined: [Prediction] = [chip0]
-        combined.append(contentsOf: predictionEngine.topPredictions(excluding: finalWord, limit: 2))
+        combined.append(contentsOf: freshPredictions(after: finalWord))
         while combined.count < 3 { combined.append(.empty) }
         state.predictions = combined
 
