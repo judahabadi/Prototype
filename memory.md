@@ -7,6 +7,10 @@
 - The real `.xcodeproj` has team `7KQ7FD9TAX`, automatic signing, and bundle IDs under `com.prototype.app.*`.
 - The `project.yml` at root describes a different bundle ID scheme (`com.prototype.keyboard.*`) — these are out of sync.
 
+### Xcode Cloud progress
+- Step 2 done: bundle IDs and App Group `group.harrykhizer.ProtoType` registered in Developer Portal.
+- Step 3 done: app exists in App Store Connect under bundle ID `com.prototype.app.ProtoType`.
+
 ### Xcode Cloud blockers identified
 - `IPHONEOS_DEPLOYMENT_TARGET = 26.4` in `.xcodeproj` — confirmed correct. Apple skipped 17→26; iOS 26 is the current shipping OS. Do not change this.
 - Bundle IDs and App Group `group.harrykhizer.ProtoType` need to be registered in the Apple Developer Portal.
