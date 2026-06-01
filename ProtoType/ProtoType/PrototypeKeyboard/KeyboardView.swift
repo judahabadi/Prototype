@@ -806,7 +806,7 @@ struct KeyboardView: View {
             state.shiftOnce = true
             proxy?.playInputClick()
         } label: {
-            Text(returnKeyLabel)
+            returnKeyContent
                 .font(Self.funcKeyFont)
                 .foregroundStyle(Self.keyText)
                 .frame(width: width, height: Self.keyHeight)
@@ -819,7 +819,20 @@ struct KeyboardView: View {
         .allowsHitTesting(!disabled)
     }
 
-    private var returnKeyLabel: String {
+    @ViewBuilder
+    private var returnKeyContent: some View {
+        // Apple shows the ↵ glyph only for the default return type; semantic
+        // types (search, go, send…) show the word.
+        if let label = returnKeyLabel {
+            Text(label)
+        } else {
+            Image(systemName: "return")
+        }
+    }
+
+    /// Returns the word for semantic return types, or nil for the default
+    /// type (which renders the ↵ glyph instead).
+    private var returnKeyLabel: String? {
         switch proxy?.returnKeyType ?? .default {
         case .search, .google, .yahoo: return "search"
         case .go: return "go"
@@ -829,8 +842,8 @@ struct KeyboardView: View {
         case .continue: return "continue"
         case .join: return "join"
         case .route: return "route"
-        case .default: return "return"
-        @unknown default: return "return"
+        case .default: return nil
+        @unknown default: return nil
         }
     }
 
