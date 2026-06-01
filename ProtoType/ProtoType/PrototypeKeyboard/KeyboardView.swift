@@ -62,6 +62,21 @@ struct KeyboardView: View {
 
     private var shouldExpandReplacement: Bool { shouldPredict }
 
+    private var preferredScheme: ColorScheme? {
+        switch proxy?.keyboardAppearance ?? .default {
+        case .dark: return .dark
+        case .light: return .light
+        default: return nil
+        }
+    }
+
+    private var returnIsDisabled: Bool {
+        guard proxy?.enablesReturnKeyAutomatically == true else { return false }
+        let before = proxy?.documentContextBeforeInput ?? ""
+        let selection = proxy?.selectedText ?? ""
+        return before.isEmpty && selection.isEmpty
+    }
+
     private enum AutocapPolicy { case none, words, sentences, all }
     private var autocapPolicy: AutocapPolicy {
         switch proxy?.autocapitalizationType ?? .sentences {
@@ -102,6 +117,7 @@ struct KeyboardView: View {
                 .padding(.horizontal, Self.horizontalPadding)
         }
         .background(Self.board)
+        .preferredColorScheme(preferredScheme)
         .coordinateSpace(name: Self.keyboardSpace)
         .clipShape(
             UnevenRoundedRectangle(
@@ -627,21 +643,24 @@ struct KeyboardView: View {
 
     private func globeKey(width: CGFloat) -> some View {
         let id = "key.globe"
-        return Button {
-            flashKey(id)
-            proxy?.advanceToNextInputMode()
-            proxy?.playInputClick()
-        } label: {
-            Image(systemName: "globe")
-                .font(Self.funcKeyFont)
-                .foregroundStyle(Self.keyText)
-                .frame(width: width, height: Self.keyHeight)
-                .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .scaleEffect(pressedKey == id ? 0.95 : 1.0)
-        .frame(minHeight: 44)
+        return Image(systemName: "globe")
+            .font(Self.funcKeyFont)
+            .foregroundStyle(Self.keyText)
+            .frame(width: width, height: Self.keyHeight)
+            .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
+            .contentShape(Rectangle())
+            .scaleEffect(pressedKey == id ? 0.95 : 1.0)
+            .frame(minHeight: 44)
+            .onTapGesture {
+                flashKey(id)
+                proxy?.advanceToNextInputMode()
+                proxy?.playInputClick()
+            }
+            .onLongPressGesture(minimumDuration: 0.4) {
+                flashKey(id)
+                proxy?.showInputModeList()
+                proxy?.playInputClick()
+            }
     }
 
     private func languagePickerKey(width: CGFloat) -> some View {
@@ -662,27 +681,61 @@ struct KeyboardView: View {
         .frame(minHeight: 44)
     }
 
+    @State private var spaceDragStartX: CGFloat? = nil
+    @State private var spaceDragLastX: CGFloat? = nil
+    @State private var spaceDidDrag: Bool = false
+
     private var spaceKey: some View {
         let id = "key.space"
-        return Button {
-            flashKey(id)
-            handleSpace()
-        } label: {
-            Text("space")
-                .font(Self.funcKeyFont)
-                .foregroundStyle(Self.keyText)
-                .frame(maxWidth: .infinity, minHeight: Self.keyHeight)
-                .background(keyShape(filled: Self.letterKeyColor, pressed: pressedKey == id))
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .scaleEffect(pressedKey == id ? 0.95 : 1.0)
-        .frame(minHeight: 44)
+        return Text("space")
+            .font(Self.funcKeyFont)
+            .foregroundStyle(Self.keyText)
+            .frame(maxWidth: .infinity, minHeight: Self.keyHeight)
+            .background(keyShape(filled: Self.letterKeyColor, pressed: pressedKey == id))
+            .contentShape(Rectangle())
+            .scaleEffect(pressedKey == id ? 0.95 : 1.0)
+            .frame(minHeight: 44)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        if spaceDragStartX == nil {
+                            spaceDragStartX = value.location.x
+                            spaceDragLastX = value.location.x
+                            spaceDidDrag = false
+                            pressedKey = id
+                            return
+                        }
+                        guard let last = spaceDragLastX else { return }
+                        let dx = value.location.x - last
+                        if !spaceDidDrag && abs(value.location.x - (spaceDragStartX ?? 0)) > 10 {
+                            spaceDidDrag = true
+                        }
+                        if spaceDidDrag, abs(dx) >= 8 {
+                            let chars = Int(dx / 8)
+                            if chars != 0 {
+                                proxy?.adjustTextPosition(byCharacterOffset: chars)
+                                spaceDragLastX = value.location.x
+                            }
+                        }
+                    }
+                    .onEnded { _ in
+                        if !spaceDidDrag {
+                            flashKey(id)
+                            handleSpace()
+                        }
+                        pressedKey = nil
+                        spaceDragStartX = nil
+                        spaceDragLastX = nil
+                        spaceDidDrag = false
+                    }
+            )
     }
 
     private func returnKey(width: CGFloat) -> some View {
         let id = "key.return"
+        let disabled = returnIsDisabled
         return Button {
+            guard !disabled else { return }
             flashKey(id)
             proxy?.insertText("\n")
             state.currentPartial = ""
@@ -700,6 +753,8 @@ struct KeyboardView: View {
         .buttonStyle(.plain)
         .scaleEffect(pressedKey == id ? 0.95 : 1.0)
         .frame(minHeight: 44)
+        .opacity(disabled ? 0.4 : 1.0)
+        .allowsHitTesting(!disabled)
     }
 
     private var returnKeyLabel: String {

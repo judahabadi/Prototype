@@ -92,6 +92,20 @@ final class KeyboardViewController: UIInputViewController, KeyboardProxy, UIInpu
         super.dismissKeyboard()
     }
 
+    func adjustTextPosition(byCharacterOffset offset: Int) {
+        textDocumentProxy.adjustTextPosition(byCharacterOffset: offset)
+    }
+
+    func showInputModeList() {
+        handleInputModeList(from: view, with: UIEvent())
+    }
+
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+        Task { await TranslationService.shared.evict() }
+        predictionEngine?.evict()
+    }
+
     override var needsInputModeSwitchKey: Bool {
         super.needsInputModeSwitchKey
     }
@@ -134,6 +148,14 @@ final class KeyboardViewController: UIInputViewController, KeyboardProxy, UIInpu
 
     var textContentType: UITextContentType? {
         textDocumentProxy.textContentType
+    }
+
+    var enablesReturnKeyAutomatically: Bool {
+        textDocumentProxy.enablesReturnKeyAutomatically ?? false
+    }
+
+    var keyboardAppearance: UIKeyboardAppearance {
+        textDocumentProxy.keyboardAppearance ?? .default
     }
 
     var enableInputClicksWhenVisible: Bool { true }
