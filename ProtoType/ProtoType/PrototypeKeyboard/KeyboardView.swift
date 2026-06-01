@@ -96,10 +96,10 @@ struct KeyboardView: View {
     private static let keyShadow = Color.black.opacity(0.3)
     private static let keyText = Color(uiColor: .label)
 
-    private static let keyFont = Font.system(size: 23, weight: .regular)
-    private static let funcKeyFont = Font.system(size: 16, weight: .regular)
+    private static let keyFont = Font.system(size: 22, weight: .regular)
+    private static let funcKeyFont = Font.system(size: 15, weight: .regular)
     private static let cornerRadius: CGFloat = 5
-    private static let keyHeight: CGFloat = 46
+    private static let keyHeight: CGFloat = 42
     private static let rowSpacing: CGFloat = 12
     private static let keySpacing: CGFloat = 6
     private static let horizontalPadding: CGFloat = 3
@@ -414,7 +414,7 @@ struct KeyboardView: View {
         let rows = keyboardLayout
         let rtl = state.nativeLanguage.isRTL
         let indent = (keyWidth + Self.keySpacing) / 2
-        let funcWidth = keyWidth * 1.5
+        let funcWidth = keyWidth * 1.5 + Self.keySpacing / 2
         return VStack(spacing: Self.rowSpacing) {
             HStack(spacing: Self.keySpacing) {
                 ForEach(rtl ? rows[0].reversed() : rows[0], id: \.self) { letterKey($0) }
@@ -495,13 +495,12 @@ struct KeyboardView: View {
             Text(displayChar(ch))
                 .font(Self.keyFont)
                 .foregroundStyle(Self.keyText)
-                .frame(maxWidth: .infinity, minHeight: Self.keyHeight)
+                .frame(maxWidth: .infinity, height: Self.keyHeight)
                 .background(keyShape(filled: Self.letterKeyColor, pressed: pressedKey == id))
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .scaleEffect(pressedKey == id ? 0.95 : 1.0)
-        .frame(minHeight: 44)
         .background(
             GeometryReader { g in
                 Color.clear
@@ -557,7 +556,6 @@ struct KeyboardView: View {
         }
         .buttonStyle(.plain)
         .scaleEffect(pressedKey == id ? 0.95 : 1.0)
-        .frame(minHeight: 44)
     }
 
     private func deleteKey(width: CGFloat) -> some View {
@@ -569,7 +567,6 @@ struct KeyboardView: View {
             .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
             .contentShape(Rectangle())
             .scaleEffect(pressedKey == id ? 0.95 : 1.0)
-            .frame(minHeight: 44)
             .onTapGesture {
                 flashKey(id)
                 performDelete()
@@ -641,7 +638,6 @@ struct KeyboardView: View {
         }
         .buttonStyle(.plain)
         .scaleEffect(pressedKey == id ? 0.95 : 1.0)
-        .frame(minHeight: 44)
     }
 
     // MARK: - Bottom row
@@ -681,7 +677,6 @@ struct KeyboardView: View {
         }
         .buttonStyle(.plain)
         .scaleEffect(pressedKey == id ? 0.95 : 1.0)
-        .frame(minHeight: 44)
     }
 
     private func modeKey(width: CGFloat) -> some View {
@@ -701,7 +696,6 @@ struct KeyboardView: View {
         }
         .buttonStyle(.plain)
         .scaleEffect(pressedKey == id ? 0.95 : 1.0)
-        .frame(minHeight: 44)
     }
 
     private func globeKey(width: CGFloat) -> some View {
@@ -713,7 +707,6 @@ struct KeyboardView: View {
             .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
             .contentShape(Rectangle())
             .scaleEffect(pressedKey == id ? 0.95 : 1.0)
-            .frame(minHeight: 44)
             .onTapGesture {
                 flashKey(id)
                 proxy?.advanceToNextInputMode()
@@ -741,7 +734,6 @@ struct KeyboardView: View {
         }
         .buttonStyle(.plain)
         .scaleEffect(pressedKey == id ? 0.95 : 1.0)
-        .frame(minHeight: 44)
     }
 
     @State private var spaceDragStartX: CGFloat? = nil
@@ -753,11 +745,10 @@ struct KeyboardView: View {
         return Text("space")
             .font(Self.funcKeyFont)
             .foregroundStyle(Self.keyText)
-            .frame(maxWidth: .infinity, minHeight: Self.keyHeight)
+            .frame(maxWidth: .infinity, height: Self.keyHeight)
             .background(keyShape(filled: Self.letterKeyColor, pressed: pressedKey == id))
             .contentShape(Rectangle())
             .scaleEffect(pressedKey == id ? 0.95 : 1.0)
-            .frame(minHeight: 44)
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
@@ -815,7 +806,6 @@ struct KeyboardView: View {
         }
         .buttonStyle(.plain)
         .scaleEffect(pressedKey == id ? 0.95 : 1.0)
-        .frame(minHeight: 44)
         .opacity(disabled ? 0.4 : 1.0)
         .allowsHitTesting(!disabled)
     }
