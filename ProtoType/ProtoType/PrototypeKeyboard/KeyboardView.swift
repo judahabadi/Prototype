@@ -492,7 +492,7 @@ struct KeyboardView: View {
             Text(displayChar(ch))
                 .font(Self.keyFont)
                 .foregroundStyle(Self.keyText)
-                .frame(maxWidth: .infinity, height: Self.keyHeight)
+                .frame(maxWidth: .infinity, minHeight: Self.keyHeight, maxHeight: Self.keyHeight)
                 .background(keyShape(filled: Self.letterKeyColor, pressed: pressedKey == id))
                 .contentShape(Rectangle())
         }
@@ -742,7 +742,7 @@ struct KeyboardView: View {
         return Text("space")
             .font(Self.funcKeyFont)
             .foregroundStyle(Self.keyText)
-            .frame(maxWidth: .infinity, height: Self.keyHeight)
+            .frame(maxWidth: .infinity, minHeight: Self.keyHeight, maxHeight: Self.keyHeight)
             .background(keyShape(filled: Self.letterKeyColor, pressed: pressedKey == id))
             .contentShape(Rectangle())
             .scaleEffect(pressedKey == id ? 0.95 : 1.0)
