@@ -102,7 +102,7 @@ struct KeyboardView: View {
         dark: UIColor(red: 110/255, green: 110/255, blue: 115/255, alpha: 1)   // #6E6E73
     )
     private static let funcKeyColor = dynamic(
-        light: .white,                                                          // all keys white in light mode
+        light: UIColor(red: 172/255, green: 177/255, blue: 186/255, alpha: 1), // #ACB1BA — Apple function key grey
         dark: UIColor(red: 59/255, green: 59/255, blue: 62/255, alpha: 1)      // #3B3B3E
     )
     private static let keyShadow = Color.black.opacity(0.3)
