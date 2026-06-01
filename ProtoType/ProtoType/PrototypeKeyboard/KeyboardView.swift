@@ -89,10 +89,22 @@ struct KeyboardView: View {
         }
     }
 
-    // Adaptive palette
-    private static let board = Color(uiColor: .systemGray5)
-    private static let letterKeyColor = Color(uiColor: .systemBackground)
-    private static let funcKeyColor = Color(uiColor: .systemGray3)
+    // Native iOS keyboard palette (matches the stock keyboard in light + dark).
+    private static func dynamic(light: UIColor, dark: UIColor) -> Color {
+        Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? dark : light })
+    }
+    private static let board = dynamic(
+        light: UIColor(red: 209/255, green: 211/255, blue: 217/255, alpha: 1),
+        dark: UIColor(red: 43/255, green: 43/255, blue: 43/255, alpha: 1)
+    )
+    private static let letterKeyColor = dynamic(
+        light: .white,
+        dark: UIColor(red: 106/255, green: 106/255, blue: 106/255, alpha: 1)
+    )
+    private static let funcKeyColor = dynamic(
+        light: UIColor(red: 174/255, green: 179/255, blue: 190/255, alpha: 1),
+        dark: UIColor(red: 67/255, green: 67/255, blue: 67/255, alpha: 1)
+    )
     private static let keyShadow = Color.black.opacity(0.3)
     private static let keyText = Color(uiColor: .label)
 
@@ -739,7 +751,7 @@ struct KeyboardView: View {
 
     private var spaceKey: some View {
         let id = "key.space"
-        return Text("space")
+        return Text("")
             .font(Self.funcKeyFont)
             .foregroundStyle(Self.keyText)
             .frame(maxWidth: .infinity, minHeight: Self.keyHeight, maxHeight: Self.keyHeight)
