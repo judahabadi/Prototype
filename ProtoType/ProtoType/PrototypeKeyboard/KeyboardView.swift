@@ -109,8 +109,10 @@ struct KeyboardView: View {
             if shouldPredict {
                 predictionBar
                     .frame(height: 44)
-                    .padding(.all, 0)
                     .background(Self.board)
+                Rectangle()
+                    .fill(Color(uiColor: .separator))
+                    .frame(height: 0.5)
             }
             keyboardArea
                 .padding(.top, Self.rowSpacing)
@@ -120,14 +122,6 @@ struct KeyboardView: View {
         .background(Self.board)
         .preferredColorScheme(preferredScheme)
         .coordinateSpace(name: Self.keyboardSpace)
-        .clipShape(
-            UnevenRoundedRectangle(
-                topLeadingRadius: 10,
-                bottomLeadingRadius: 0,
-                bottomTrailingRadius: 0,
-                topTrailingRadius: 10
-            )
-        )
         .overlay(alignment: .topLeading) {
             if let key = previewKey, previewFrame != .zero {
                 KeyPreviewBubble(text: key.uppercased())
