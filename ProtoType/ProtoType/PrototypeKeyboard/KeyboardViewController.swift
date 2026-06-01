@@ -149,7 +149,7 @@ final class KeyboardViewController: UIInputViewController, KeyboardProxy, UIInpu
     }
 
     var isSecureTextEntry: Bool {
-        textDocumentProxy.isSecureTextEntry
+        textDocumentProxy.isSecureTextEntry ?? false
     }
 
     var textContentType: UITextContentType? {
