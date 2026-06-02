@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import Translation
 
 struct KeyboardView: View {
     @Bindable var state: KeyboardState
@@ -13,6 +14,7 @@ struct KeyboardView: View {
     @State private var previewKey: String? = nil
     @State private var previewFrame: CGRect = .zero
     @State private var pasteAvailable: Bool = false
+    @State private var translationConfig: TranslationSession.Configuration?
 
     private static let keyboardSpace = "kb"
 
@@ -151,14 +153,27 @@ struct KeyboardView: View {
         .onAppear {
             evaluateAutoCap()
             refreshPasteAvailable()
+            updateTranslationConfig()
         }
         .onChange(of: state.contextSignal) {
             evaluateAutoCap()
+        }
+        .onChange(of: state.nativeLanguage) { updateTranslationConfig() }
+        .onChange(of: state.targetLanguage) { updateTranslationConfig() }
+        .translationTask(translationConfig) { session in
+            TranslationService.shared.setSession(session)
         }
     }
 
     private func refreshPasteAvailable() {
         pasteAvailable = UIPasteboard.general.hasStrings
+    }
+
+    private func updateTranslationConfig() {
+        translationConfig = TranslationSession.Configuration(
+            source: Locale.Language(identifier: state.nativeLanguage.isoCode),
+            target: Locale.Language(identifier: state.targetLanguage.isoCode)
+        )
     }
 
     private func recentlyTypedWords() -> Set<String> {
