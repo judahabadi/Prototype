@@ -8,7 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		02020F482FABB5EA000B3D50 /* PrototypeKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 02020F412FABB5EA000B3D50 /* PrototypeKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		0213F7002FCF1ED10001ADEF /* KeyboardKit in Frameworks */ = {isa = PBXBuildFile; productRef = 0213F6FF2FCF1ED10001ADEF /* KeyboardKit */; };
+
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -123,7 +123,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0213F7002FCF1ED10001ADEF /* KeyboardKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -244,9 +243,6 @@
 				BEEF000000000000000A0001 /* Shared */,
 			);
 			name = PrototypeKeyboard;
-			packageProductDependencies = (
-				0213F6FF2FCF1ED10001ADEF /* KeyboardKit */,
-			);
 			productName = PrototypeKeyboard;
 			productReference = 02020F412FABB5EA000B3D50 /* PrototypeKeyboard.appex */;
 			productType = "com.apple.product-type.app-extension";
@@ -286,7 +282,6 @@
 			mainGroup = 02020F072FABB237000B3D50;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				0213F6FE2FCF1ED10001ADEF /* XCRemoteSwiftPackageReference "KeyboardKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 02020F112FABB237000B3D50 /* Products */;
@@ -763,23 +758,7 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		0213F6FE2FCF1ED10001ADEF /* XCRemoteSwiftPackageReference "KeyboardKit" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/KeyboardKit/KeyboardKit";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 10.5.1;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
 /* Begin XCSwiftPackageProductDependency section */
-		0213F6FF2FCF1ED10001ADEF /* KeyboardKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 0213F6FE2FCF1ED10001ADEF /* XCRemoteSwiftPackageReference "KeyboardKit" */;
-			productName = KeyboardKit;
-		};
 /* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 02020F082FABB237000B3D50 /* Project object */;
