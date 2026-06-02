@@ -6,6 +6,7 @@ struct PaywallView: View {
     @State private var manager = SubscriptionManager.shared
     @State private var errorMessage: String?
     @State private var showError = false
+    @State private var showPrivacyPolicy = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -84,9 +85,16 @@ struct PaywallView: View {
                     .foregroundStyle(.tertiary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 24)
+
+                Button("Privacy Policy") { showPrivacyPolicy = true }
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 40)
+        }
+        .sheet(isPresented: $showPrivacyPolicy) {
+            PrivacyPolicyView()
         }
         .alert("Something went wrong", isPresented: $showError) {
             Button("OK", role: .cancel) {}
