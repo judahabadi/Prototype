@@ -5,56 +5,17 @@ struct HomeView: View {
     @State private var pollTimer: Timer?
 
     var body: some View {
-        @Bindable var state = appState
-
-        NavigationStack {
-            List {
-                // Language pair card
-                Section {
-                    VStack(spacing: 20) {
-                        HStack(spacing: 0) {
-                            LanguageCell(language: appState.nativeLanguage, label: "Speaking")
-                            Spacer()
-                            Button {
-                                appState.swapLanguages()
-                            } label: {
-                                Image(systemName: "arrow.left.arrow.right")
-                                    .font(.title3)
-                                    .foregroundStyle(.blue)
-                                    .frame(width: 44, height: 44)
-                            }
-                            .buttonStyle(.plain)
-                            Spacer()
-                            LanguageCell(language: appState.targetLanguage, label: "Learning")
-                        }
-                    }
-                    .padding(.vertical, 8)
+        TabView {
+            HomeTab()
+                .environment(appState)
+                .tabItem {
+                    Label("Home", systemImage: "house.fill")
                 }
 
-                // Keyboard setup card
-                if !appState.keyboardHasLoaded {
-                    Section {
-                        SetupCard()
-                            .environment(appState)
-                    }
+            TryItView()
+                .tabItem {
+                    Label("Try It", systemImage: "keyboard.fill")
                 }
-
-                // Change language pair
-                Section("Languages") {
-                    Picker("I speak", selection: $state.nativeLanguage) {
-                        ForEach(Language.allCases) { lang in
-                            Text("\(lang.flag) \(lang.displayName)").tag(lang)
-                        }
-                    }
-
-                    Picker("I'm learning", selection: $state.targetLanguage) {
-                        ForEach(Language.allCases) { lang in
-                            Text("\(lang.flag) \(lang.displayName)").tag(lang)
-                        }
-                    }
-                }
-            }
-            .navigationTitle("ProtoType")
         }
         .onAppear {
             pollTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { _ in
@@ -67,7 +28,83 @@ struct HomeView: View {
     }
 }
 
-// MARK: - Language cell
+// MARK: - Home tab
+
+private struct HomeTab: View {
+    @Environment(AppState.self) private var appState
+
+    var body: some View {
+        @Bindable var state = appState
+
+        NavigationStack {
+            List {
+                // Status banner
+                if !appState.keyboardHasLoaded {
+                    Section {
+                        SetupCard()
+                            .environment(appState)
+                    }
+                } else {
+                    Section {
+                        HStack(spacing: 10) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                            Text("Keyboard is active")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+
+                // Language pair
+                Section("Language pair") {
+                    LanguagePairCard()
+                        .environment(appState)
+                }
+
+                // Change languages
+                Section("Change languages") {
+                    LanguageRow(title: "I speak", selection: $state.nativeLanguage)
+                        .padding(.vertical, 4)
+                    LanguageRow(title: "I'm learning", selection: $state.targetLanguage)
+                        .padding(.vertical, 4)
+                }
+
+                // How to use
+                Section("How to use") {
+                    HowToUseCard()
+                }
+            }
+            .navigationTitle("ProtoType")
+        }
+    }
+}
+
+// MARK: - Language pair card
+
+private struct LanguagePairCard: View {
+    @Environment(AppState.self) private var appState
+
+    var body: some View {
+        HStack(spacing: 0) {
+            LanguageCell(language: appState.nativeLanguage, label: "Speaking")
+            Spacer()
+            Button {
+                appState.swapLanguages()
+            } label: {
+                Image(systemName: "arrow.left.arrow.right")
+                    .font(.title3)
+                    .foregroundStyle(.blue)
+                    .frame(width: 44, height: 44)
+            }
+            .buttonStyle(.plain)
+            Spacer()
+            LanguageCell(language: appState.targetLanguage, label: "Learning")
+        }
+        .padding(.vertical, 8)
+    }
+}
 
 private struct LanguageCell: View {
     let language: Language
@@ -92,34 +129,126 @@ private struct LanguageCell: View {
 
 private struct SetupCard: View {
     @Environment(AppState.self) private var appState
+    @State private var expanded = false
 
     var body: some View {
-        HStack(spacing: 16) {
-            Image(systemName: "keyboard.badge.exclamationmark")
-                .font(.title2)
-                .foregroundStyle(.orange)
-                .frame(width: 32)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 14) {
+                Image(systemName: "keyboard.badge.exclamationmark")
+                    .font(.title2)
+                    .foregroundStyle(.orange)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Keyboard not set up")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                Text("Tap to finish setup")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Keyboard not enabled")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                    Text("Tap to see setup steps")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: expanded ? "chevron.up" : "chevron.down")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.tertiary)
             }
+            .contentShape(Rectangle())
+            .onTapGesture { withAnimation { expanded.toggle() } }
 
-            Spacer()
+            if expanded {
+                Divider().padding(.top, 12)
 
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+                VStack(alignment: .leading, spacing: 8) {
+                    SetupStepRow(number: 1, text: "Open **Settings**")
+                    SetupStepRow(number: 2, text: "Go to **General → Keyboard → Keyboards**")
+                    SetupStepRow(number: 3, text: "Tap **Add New Keyboard → ProtoType**")
+                    SetupStepRow(number: 4, text: "Tap ProtoType → enable **Allow Full Access**")
+                }
+                .padding(.top, 12)
+
+                Button {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                } label: {
+                    Label("Open Settings", systemImage: "gear")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.regular)
+                .padding(.top, 16)
+            }
         }
         .padding(.vertical, 4)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            if let url = URL(string: UIApplication.openSettingsURLString) {
-                UIApplication.shared.open(url)
+    }
+}
+
+private struct SetupStepRow: View {
+    let number: Int
+    let text: LocalizedStringKey
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text("\(number)")
+                .font(.caption)
+                .fontWeight(.bold)
+                .foregroundStyle(.white)
+                .frame(width: 20, height: 20)
+                .background(.orange, in: Circle())
+
+            Text(text)
+                .font(.subheadline)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer()
+        }
+    }
+}
+
+// MARK: - How to use card
+
+private struct HowToUseCard: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            TipRow(icon: "text.bubble", color: .blue,
+                   title: "See the translation",
+                   body: "Type a word — its translation appears in the bar above the keyboard.")
+            Divider()
+            TipRow(icon: "hand.tap", color: .purple,
+                   title: "Tap to insert",
+                   body: "Tap a word chip to accept it. Long-press to insert the translation instead.")
+            Divider()
+            TipRow(icon: "arrow.left.arrow.right", color: .green,
+                   title: "Switch languages",
+                   body: "Tap the flag icon on the keyboard to change your language pair anytime.")
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+private struct TipRow: View {
+    let icon: String
+    let color: Color
+    let title: String
+    let body: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 14) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(color)
+                .frame(width: 28)
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                Text(body)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
