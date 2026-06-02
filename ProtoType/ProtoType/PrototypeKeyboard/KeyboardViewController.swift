@@ -41,17 +41,13 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
     }
 
     override func viewWillSetupKeyboardView() {
-        setupKeyboardView { [weak self] controller in
-            if let s = self {
-                ProtoTypeKeyboardView(
-                    state: s.kbState,
-                    proxy: s,
-                    predictionEngine: s.predictionEngine,
-                    kkState: controller.state
-                )
-            } else {
-                EmptyView()
-            }
+        setupKeyboardView { controller in
+            ProtoTypeKeyboardView(
+                state: self.kbState,
+                proxy: self,
+                predictionEngine: self.predictionEngine,
+                kkServices: controller.services
+            )
         }
     }
 
