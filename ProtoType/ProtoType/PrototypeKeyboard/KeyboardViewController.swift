@@ -30,12 +30,11 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
         state.keyboardContext.locale = Locale(identifier: native.isoCode)
 
         // Our action handler intercepts key presses for prediction/translation
-        services.actionHandler = ProtoTypeActionHandler(
-            controller: self,
-            kbState: kbState,
-            predictionEngine: predictionEngine,
-            getLexicon: { [weak self] in self?.lexicon ?? [:] }
-        )
+        let handler = ProtoTypeActionHandler(controller: self)
+        handler.kbState = kbState
+        handler.predictionEngine = predictionEngine
+        handler.getLexicon = { [weak self] in self?.lexicon ?? [:] }
+        services.actionHandler = handler
 
         reloadLexicon()
     }

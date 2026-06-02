@@ -3,21 +3,9 @@ import UIKit
 
 final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
 
-    private let kbState: KeyboardState
-    private let predictionEngine: PredictionEngine
-    private let getLexicon: () -> [String: String]
-
-    init(
-        controller: KeyboardInputViewController,
-        kbState: KeyboardState,
-        predictionEngine: PredictionEngine,
-        getLexicon: @escaping () -> [String: String]
-    ) {
-        self.kbState = kbState
-        self.predictionEngine = predictionEngine
-        self.getLexicon = getLexicon
-        super.init(controller: controller)
-    }
+    var kbState: KeyboardState!
+    var predictionEngine: PredictionEngine!
+    var getLexicon: (() -> [String: String])!
 
     override func action(
         for gesture: Keyboard.Gesture,
