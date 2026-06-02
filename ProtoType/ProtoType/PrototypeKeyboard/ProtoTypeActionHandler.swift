@@ -17,6 +17,7 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
         case (.release, .space):
             return { [weak self] _ in self?.handleSpace() }
 
+
         case (.release, .character(let char)):
             return { [weak self] controller in
                 standard?(controller)

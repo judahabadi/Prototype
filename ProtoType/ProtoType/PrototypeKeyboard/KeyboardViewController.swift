@@ -39,7 +39,6 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
     }
 
     override func viewWillSetupKeyboardView() {
-        // ⚠️ Do not call super — KK would replace our view with its default
         setupKeyboardView { controller in
             ProtoTypeKeyboardView(
                 state: self.kbState,
