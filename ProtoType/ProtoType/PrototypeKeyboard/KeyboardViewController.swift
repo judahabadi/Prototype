@@ -8,9 +8,9 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
     var predictionEngine: PredictionEngine!
     private var lexicon: [String: String] = [:]
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
+    // MARK: - KK 10 lifecycle
 
+    override func viewWillSetupKeyboardKit() {
         let defaults = AppGroup.defaults
         defaults.set(true, forKey: "keyboardDidLoad")
         let nativeRaw = defaults.string(forKey: AppGroup.nativeKey) ?? Language.english.rawValue
@@ -26,20 +26,27 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
         predictionEngine.load(from: native, to: target)
         kbState.predictions = predictionEngine.topPredictions()
 
-        // Sync KK's locale to our native language so KeyboardView uses the right layout
-        state.keyboardContext.locale = Locale(identifier: native.isoCode)
+        let app = KeyboardApp(
+            name: "ProtoType",
+            appGroupId: AppGroup.id
+        )
 
-        // Our action handler intercepts key presses for prediction/translation
-        let handler = ProtoTypeActionHandler(controller: self)
-        handler.kbState = kbState
-        handler.predictionEngine = predictionEngine
-        handler.getLexicon = { [weak self] in self?.lexicon ?? [:] }
-        services.actionHandler = handler
+        setupKeyboardKit(for: app) { [weak self] _ in
+            guard let self else { return }
+            state.keyboardContext.locale = Locale(identifier: kbState.nativeLanguage.isoCode)
 
-        reloadLexicon()
+            let handler = ProtoTypeActionHandler(controller: self)
+            handler.kbState = kbState
+            handler.predictionEngine = predictionEngine
+            handler.getLexicon = { [weak self] in self?.lexicon ?? [:] }
+            services.actionHandler = handler
+
+            reloadLexicon()
+        }
     }
 
     override func viewWillSetupKeyboardView() {
+        // ⚠️ Do not call super — KK would replace our view
         setupKeyboardView { controller in
             ProtoTypeKeyboardView(
                 state: self.kbState,
@@ -53,7 +60,7 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         reloadLexicon()
-        kbState.contextSignal += 1
+        kbState?.contextSignal += 1
     }
 
     private func reloadLexicon() {
@@ -68,7 +75,7 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
 
     override func textDidChange(_ textInput: UITextInput?) {
         super.textDidChange(textInput)
-        kbState.contextSignal += 1
+        kbState?.contextSignal += 1
     }
 
     // MARK: - KeyboardProxy
