@@ -1,24 +1,24 @@
-//
-//  ContentView.swift
-//  ProtoType
-//
-//  Created by Harry Khizer on 5/6/26.
-//
-
 import SwiftUI
 
 struct ContentView: View {
     @State private var appState = AppState()
+    @State private var manager = SubscriptionManager.shared
 
     var body: some View {
         Group {
-            if appState.hasCompletedOnboarding {
+            if manager.shouldShowPaywall {
+                PaywallView()
+            } else if appState.hasCompletedOnboarding {
                 HomeView()
+                    .environment(appState)
             } else {
                 OnboardingView()
+                    .environment(appState)
             }
         }
-        .environment(appState)
+        .task {
+            await manager.refresh()
+        }
     }
 }
 

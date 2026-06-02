@@ -32,13 +32,40 @@ struct HomeView: View {
 
 private struct HomeTab: View {
     @Environment(AppState.self) private var appState
+    @State private var manager = SubscriptionManager.shared
+    @State private var showPaywall = false
 
     var body: some View {
         @Bindable var state = appState
 
         NavigationStack {
             List {
-                // Status banner
+                // Trial banner
+                if !manager.isSubscribed && !manager.trialExpired {
+                    Section {
+                        HStack(spacing: 12) {
+                            Image(systemName: "clock.fill")
+                                .foregroundStyle(.orange)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("\(manager.trialDaysRemaining) day\(manager.trialDaysRemaining == 1 ? "" : "s") left in trial")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                Text("Subscribe to keep using ProtoType")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Button("Subscribe") { showPaywall = true }
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .buttonStyle(.borderedProminent)
+                                .controlSize(.small)
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+
+                // Keyboard status banner
                 if !appState.keyboardHasLoaded {
                     Section {
                         SetupCard()
@@ -77,6 +104,9 @@ private struct HomeTab: View {
                 }
             }
             .navigationTitle("ProtoType")
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView()
         }
     }
 }
