@@ -1,11 +1,11 @@
 import UIKit
 import SwiftUI
+import KeyboardKit
 
-final class KeyboardViewController: UIInputViewController, KeyboardProxy, UIInputViewAudioFeedback {
+final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, UIInputViewAudioFeedback {
 
-    private var kbState: KeyboardState!
-    private var predictionEngine: PredictionEngine!
-    private var hosting: UIHostingController<ProtoTypeKeyboardView>?
+    var kbState: KeyboardState!
+    var predictionEngine: PredictionEngine!
     private var lexicon: [String: String] = [:]
 
     override func viewDidLoad() {
@@ -26,26 +26,33 @@ final class KeyboardViewController: UIInputViewController, KeyboardProxy, UIInpu
         predictionEngine.load(from: native, to: target)
         kbState.predictions = predictionEngine.topPredictions()
 
-        let keyboardView = ProtoTypeKeyboardView(
-            state: kbState,
-            proxy: self,
-            predictionEngine: predictionEngine
+        // Sync KK's locale to our native language so KeyboardView uses the right layout
+        state.keyboardContext.locale = Locale(identifier: native.isoCode)
+
+        // Our action handler intercepts key presses for prediction/translation
+        services.actionHandler = ProtoTypeActionHandler(
+            controller: self,
+            kbState: kbState,
+            predictionEngine: predictionEngine,
+            getLexicon: { [weak self] in self?.lexicon ?? [:] }
         )
-        let host = UIHostingController(rootView: keyboardView)
-        host.view.backgroundColor = .clear
-        host.view.translatesAutoresizingMaskIntoConstraints = false
-        addChild(host)
-        self.view.addSubview(host.view)
-        host.didMove(toParent: self)
-        NSLayoutConstraint.activate([
-            host.view.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
-            host.view.trailingAnchor.constraint(equalTo: self.view.trailingAnchor),
-            host.view.topAnchor.constraint(equalTo: self.view.topAnchor),
-            host.view.bottomAnchor.constraint(equalTo: self.view.bottomAnchor)
-        ])
-        hosting = host
 
         reloadLexicon()
+    }
+
+    override func viewWillSetupKeyboardView() {
+        setupKeyboardView { [weak self] controller in
+            if let s = self {
+                ProtoTypeKeyboardView(
+                    state: s.kbState,
+                    proxy: s,
+                    predictionEngine: s.predictionEngine,
+                    kkState: controller.state
+                )
+            } else {
+                EmptyView()
+            }
+        }
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -71,11 +78,11 @@ final class KeyboardViewController: UIInputViewController, KeyboardProxy, UIInpu
 
     // MARK: - KeyboardProxy
 
-    func insertText(_ text: String) {
+    override func insertText(_ text: String) {
         textDocumentProxy.insertText(text)
     }
 
-    func deleteBackward() {
+    override func deleteBackward() {
         textDocumentProxy.deleteBackward()
     }
 
