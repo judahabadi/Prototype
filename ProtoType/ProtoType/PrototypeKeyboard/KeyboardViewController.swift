@@ -8,9 +8,9 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
     var predictionEngine: PredictionEngine!
     private var lexicon: [String: String] = [:]
 
-    // MARK: - KK 10 lifecycle
-
-    override func viewWillSetupKeyboardKit() {
+    override func viewDidLoad() {
+        // Initialize our state before calling super — KK may call viewWillSetupKeyboardView
+        // from within super.viewDidLoad(), so kbState/predictionEngine must be ready first.
         let defaults = AppGroup.defaults
         defaults.set(true, forKey: "keyboardDidLoad")
         let nativeRaw = defaults.string(forKey: AppGroup.nativeKey) ?? Language.english.rawValue
@@ -20,33 +20,26 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
         if target == native {
             target = native == .english ? .spanish : .english
         }
-
         kbState = KeyboardState(native: native, target: target)
         predictionEngine = PredictionEngine()
         predictionEngine.load(from: native, to: target)
         kbState.predictions = predictionEngine.topPredictions()
 
-        let app = KeyboardApp(
-            name: "ProtoType",
-            appGroupId: AppGroup.id
-        )
+        super.viewDidLoad()
 
-        setupKeyboardKit(for: app) { [weak self] _ in
-            guard let self else { return }
-            state.keyboardContext.locale = Locale(identifier: kbState.nativeLanguage.isoCode)
+        state.keyboardContext.locale = Locale(identifier: native.isoCode)
 
-            let handler = ProtoTypeActionHandler(controller: self)
-            handler.kbState = kbState
-            handler.predictionEngine = predictionEngine
-            handler.getLexicon = { [weak self] in self?.lexicon ?? [:] }
-            services.actionHandler = handler
+        let handler = ProtoTypeActionHandler(controller: self)
+        handler.kbState = kbState
+        handler.predictionEngine = predictionEngine
+        handler.getLexicon = { [weak self] in self?.lexicon ?? [:] }
+        services.actionHandler = handler
 
-            reloadLexicon()
-        }
+        reloadLexicon()
     }
 
     override func viewWillSetupKeyboardView() {
-        // ⚠️ Do not call super — KK would replace our view
+        // ⚠️ Do not call super — KK would replace our view with its default
         setupKeyboardView { controller in
             ProtoTypeKeyboardView(
                 state: self.kbState,
