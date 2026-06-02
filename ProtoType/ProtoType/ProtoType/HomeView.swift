@@ -243,15 +243,15 @@ private struct HowToUseCard: View {
         VStack(alignment: .leading, spacing: 12) {
             TipRow(icon: "text.bubble", color: .blue,
                    title: "See the translation",
-                   body: "Type a word — its translation appears in the bar above the keyboard.")
+                   description: "Type a word — its translation appears in the bar above the keyboard.")
             Divider()
             TipRow(icon: "hand.tap", color: .purple,
                    title: "Tap to insert",
-                   body: "Tap a word chip to accept it. Long-press to insert the translation instead.")
+                   description: "Tap a word chip to accept it. Long-press to insert the translation instead.")
             Divider()
             TipRow(icon: "arrow.left.arrow.right", color: .green,
                    title: "Switch languages",
-                   body: "Tap the flag icon on the keyboard to change your language pair anytime.")
+                   description: "Tap the flag icon on the keyboard to change your language pair anytime.")
         }
         .padding(.vertical, 4)
     }
@@ -261,7 +261,7 @@ private struct TipRow: View {
     let icon: String
     let color: Color
     let title: String
-    let body: String
+    let description: String
 
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
@@ -275,7 +275,7 @@ private struct TipRow: View {
                 Text(title)
                     .font(.subheadline)
                     .fontWeight(.semibold)
-                Text(body)
+                Text(description)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
