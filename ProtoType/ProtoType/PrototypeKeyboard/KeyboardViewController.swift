@@ -4,13 +4,13 @@ import KeyboardKit
 
 final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, UIInputViewAudioFeedback {
 
-    // Renamed from 'state' to avoid conflict with KeyboardInputViewController.state
     var kbState: KeyboardState!
     var predictionEngine: PredictionEngine!
+    private var hosting: UIHostingController<ProtoTypeKeyboardView>?
     private var lexicon: [String: String] = [:]
 
     override func viewDidLoad() {
-        // Initialize our state BEFORE super — KK calls viewWillSetupKeyboardView() from super.viewDidLoad()
+        // Initialize our state BEFORE super — KK may call viewWillSetupKeyboardView inside super
         let defaults = AppGroup.defaults
         defaults.set(true, forKey: "keyboardDidLoad")
         let nativeRaw = defaults.string(forKey: AppGroup.nativeKey) ?? Language.english.rawValue
@@ -28,21 +28,37 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
 
         super.viewDidLoad()
 
-        // KK's state is ready after super
         state.keyboardContext.locale = Locale(identifier: native.appleTranslationLocale)
 
+        setupKeyboardHostingController()
         reloadLexicon()
     }
 
+    // Override KK's view setup — don't call super so KK's blank SystemKeyboard isn't added
     override func viewWillSetupKeyboardView() {
-        super.viewWillSetupKeyboardView()
-        setupKeyboardView { [self] _ in
-            ProtoTypeKeyboardView(
-                state: kbState,
-                proxy: self,
-                predictionEngine: predictionEngine
-            )
-        }
+        setupKeyboardHostingController()
+    }
+
+    private func setupKeyboardHostingController() {
+        guard hosting == nil else { return }
+        let keyboardView = ProtoTypeKeyboardView(
+            state: kbState,
+            proxy: self,
+            predictionEngine: predictionEngine
+        )
+        let host = UIHostingController(rootView: keyboardView)
+        host.view.backgroundColor = .clear
+        host.view.translatesAutoresizingMaskIntoConstraints = false
+        addChild(host)
+        self.view.addSubview(host.view)
+        host.didMove(toParent: self)
+        NSLayoutConstraint.activate([
+            host.view.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
+            host.view.trailingAnchor.constraint(equalTo: self.view.trailingAnchor),
+            host.view.topAnchor.constraint(equalTo: self.view.topAnchor),
+            host.view.bottomAnchor.constraint(equalTo: self.view.bottomAnchor)
+        ])
+        hosting = host
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -116,53 +132,19 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
         super.needsInputModeSwitchKey
     }
 
-    var documentContextBeforeInput: String? {
-        textDocumentProxy.documentContextBeforeInput
-    }
-
-    var documentContextAfterInput: String? {
-        textDocumentProxy.documentContextAfterInput
-    }
-
-    var selectedText: String? {
-        textDocumentProxy.selectedText
-    }
-
-    var returnKeyType: UIReturnKeyType {
-        textDocumentProxy.returnKeyType ?? .default
-    }
-
-    var keyboardType: UIKeyboardType {
-        textDocumentProxy.keyboardType ?? .default
-    }
-
-    var autocapitalizationType: UITextAutocapitalizationType {
-        textDocumentProxy.autocapitalizationType ?? .sentences
-    }
-
-    var autocorrectionType: UITextAutocorrectionType {
-        textDocumentProxy.autocorrectionType ?? .default
-    }
-
-    var spellCheckingType: UITextSpellCheckingType {
-        textDocumentProxy.spellCheckingType ?? .default
-    }
-
-    var isSecureTextEntry: Bool {
-        textDocumentProxy.isSecureTextEntry ?? false
-    }
-
-    var textContentType: UITextContentType? {
-        textDocumentProxy.textContentType
-    }
-
-    var enablesReturnKeyAutomatically: Bool {
-        textDocumentProxy.enablesReturnKeyAutomatically ?? false
-    }
-
-    var keyboardAppearance: UIKeyboardAppearance {
-        textDocumentProxy.keyboardAppearance ?? .default
-    }
+    var documentContextBeforeInput: String? { textDocumentProxy.documentContextBeforeInput }
+    var documentContextAfterInput: String? { textDocumentProxy.documentContextAfterInput }
+    var selectedText: String? { textDocumentProxy.selectedText }
+    var returnKeyType: UIReturnKeyType { textDocumentProxy.returnKeyType ?? .default }
+    var keyboardType: UIKeyboardType { textDocumentProxy.keyboardType ?? .default }
+    var autocapitalizationType: UITextAutocapitalizationType { textDocumentProxy.autocapitalizationType ?? .sentences }
+    var autocorrectionType: UITextAutocorrectionType { textDocumentProxy.autocorrectionType ?? .default }
+    var spellCheckingType: UITextSpellCheckingType { textDocumentProxy.spellCheckingType ?? .default }
+    var isSecureTextEntry: Bool { textDocumentProxy.isSecureTextEntry ?? false }
+    var textContentType: UITextContentType? { textDocumentProxy.textContentType }
+    var enablesReturnKeyAutomatically: Bool { textDocumentProxy.enablesReturnKeyAutomatically ?? false }
+    var keyboardAppearance: UIKeyboardAppearance { textDocumentProxy.keyboardAppearance ?? .default }
 
     var enableInputClicksWhenVisible: Bool { true }
 }
+
