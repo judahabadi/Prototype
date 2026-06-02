@@ -15,7 +15,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "02020F0F2FABB237000B3D50"
-               BuildableName = "ProtoType.app"
+               BuildableName = "Prototype: Type to Fluency.app"
                BlueprintName = "ProtoType"
                ReferencedContainer = "container:ProtoType.xcodeproj">
             </BuildableReference>
@@ -44,7 +44,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "02020F0F2FABB237000B3D50"
-            BuildableName = "ProtoType.app"
+            BuildableName = "Prototype: Type to Fluency.app"
             BlueprintName = "ProtoType"
             ReferencedContainer = "container:ProtoType.xcodeproj">
          </BuildableReference>
@@ -61,7 +61,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "02020F0F2FABB237000B3D50"
-            BuildableName = "ProtoType.app"
+            BuildableName = "Prototype: Type to Fluency.app"
             BlueprintName = "ProtoType"
             ReferencedContainer = "container:ProtoType.xcodeproj">
          </BuildableReference>
