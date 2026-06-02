@@ -170,8 +170,8 @@ struct KeyboardView: View {
     }
 
     private func updateTranslationConfig() {
-        let source = Locale.Language(identifier: state.nativeLanguage.isoCode)
-        let target = Locale.Language(identifier: state.targetLanguage.isoCode)
+        let source = Locale.Language(identifier: state.nativeLanguage.appleTranslationLocale)
+        let target = Locale.Language(identifier: state.targetLanguage.appleTranslationLocale)
         Task {
             let status = await LanguageAvailability().status(from: source, to: target)
             switch status {

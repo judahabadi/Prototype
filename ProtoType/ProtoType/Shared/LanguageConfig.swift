@@ -24,6 +24,16 @@ enum Language: String, CaseIterable, Identifiable, Codable {
         }
     }
 
+    // Apple Translation framework uses more specific BCP-47 tags for some languages
+    var appleTranslationLocale: String {
+        switch self {
+        case .mandarin: return "zh-Hans"   // Apple ships Simplified; use zh-Hant for Traditional
+        case .portuguese: return "pt-BR"   // Apple ships Brazilian Portuguese
+        case .english: return "en-US"
+        default: return isoCode
+        }
+    }
+
     var isRTL: Bool {
         switch self {
         case .hebrew, .arabic: return true
