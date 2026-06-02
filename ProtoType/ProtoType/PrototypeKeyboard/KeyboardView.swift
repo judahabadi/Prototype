@@ -162,6 +162,10 @@ struct ProtoTypeKeyboardView: View {
     }
 
     private func refreshPasteAvailable() {
+        guard proxy?.hasFullAccess == true else {
+            pasteAvailable = false
+            return
+        }
         pasteAvailable = UIPasteboard.general.hasStrings
     }
 
@@ -266,7 +270,8 @@ struct ProtoTypeKeyboardView: View {
     }
 
     private func performPaste() {
-        guard let s = UIPasteboard.general.string, !s.isEmpty else {
+        guard proxy?.hasFullAccess == true,
+              let s = UIPasteboard.general.string, !s.isEmpty else {
             pasteAvailable = false
             return
         }

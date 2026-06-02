@@ -12,6 +12,7 @@ protocol KeyboardProxy: AnyObject {
     func showInputModeList()
     func requestExpandedContext(completion: @escaping (_ before: String, _ after: String) -> Void)
     var needsInputModeSwitchKey: Bool { get }
+    var hasFullAccess: Bool { get }
     var documentContextBeforeInput: String? { get }
     var documentContextAfterInput: String? { get }
     var selectedText: String? { get }
