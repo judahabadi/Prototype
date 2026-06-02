@@ -49,6 +49,11 @@ final class TranslationService {
         return "—"
     }
 
+    func clearAppleSession() {
+        appleSession = nil
+        wordCache.removeAll()
+    }
+
     func evict() {
         wordCache.removeAll()
         appleSession = nil

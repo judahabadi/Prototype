@@ -170,10 +170,21 @@ struct KeyboardView: View {
     }
 
     private func updateTranslationConfig() {
-        translationConfig = TranslationSession.Configuration(
-            source: Locale.Language(identifier: state.nativeLanguage.isoCode),
-            target: Locale.Language(identifier: state.targetLanguage.isoCode)
-        )
+        let source = Locale.Language(identifier: state.nativeLanguage.isoCode)
+        let target = Locale.Language(identifier: state.targetLanguage.isoCode)
+        Task {
+            let status = await LanguageAvailability().status(from: source, to: target)
+            switch status {
+            case .installed, .supported:
+                translationConfig = TranslationSession.Configuration(source: source, target: target)
+            case .unsupported:
+                // Apple Translation doesn't cover this pair; MyMemory fallback handles it
+                translationConfig = nil
+                TranslationService.shared.clearAppleSession()
+            @unknown default:
+                translationConfig = nil
+            }
+        }
     }
 
     private func recentlyTypedWords() -> Set<String> {
