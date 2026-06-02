@@ -25,3 +25,46 @@
 
 ### memory.md
 - Decided to maintain this file to log every significant decision made during development.
+
+---
+
+## 2026-06-02
+
+### KeyboardKit embedding — root cause and fix (builds 51–53)
+
+**Problem:** Custom keyboard extension never appeared; no crash log visible.
+
+**Root cause:** KeyboardKit is a dynamic SPM source package (not a binary xcframework). The extension target had a `PBXCopyFilesBuildPhase` entry using a `productRef` to embed KK directly into `.appex/Frameworks/`. Xcode cannot resolve `productRef` entries in copy phases for SPM products — the framework was never copied, so dyld failed silently at extension load time.
+
+**Fix (commit `c407f93`):** Added KeyboardKit to the **main app** target's Frameworks build phase instead. Xcode embeds it in `ProtoType.app/Frameworks/`. The extension finds it at runtime via its rpath `@executable_path/../../Frameworks`, which resolves to the containing app's Frameworks folder. This is the standard iOS pattern for sharing a dynamic framework between an app and its extension. The broken embed phase was removed from the extension target entirely.
+
+**Key pbxproj identifiers:**
+- `BEEF030000000000000A0001` — `XCSwiftPackageProductDependency` for main app target
+- `BEEF030100000000000A0001` — `PBXBuildFile` for KK in main app Frameworks phase
+- `BEEF020300000000000A0001` / `BEEF020400000000000A0001` — REMOVED (broken extension embed entries)
+
+### NSMicrophoneUsageDescription missing (build 52 App Store rejection, error 90683)
+
+**Problem:** App Store Connect rejected build 52 with error 90683 — `NSMicrophoneUsageDescription` missing from main app Info.plist.
+
+**Root cause:** Adding KeyboardKit to the main app target pulled in KK's dictation code, which references microphone APIs. Apple requires the purpose string even if the app itself never requests microphone access.
+
+**Fix (commit `637a13a` / `8d6baf4`):** Added `INFOPLIST_KEY_NSMicrophoneUsageDescription = "Required for keyboard dictation.";` to both Debug and Release build settings for the ProtoType target in `project.pbxproj`. This injects the key into the auto-generated Info.plist at build time.
+
+### CI destination specifier
+
+- Changed `platform=iOS Simulator,name=iPhone 16,OS=latest` → `generic/platform=iOS Simulator` in `.github/workflows/ci.yml` because GitHub's macOS-15 runner has no named iPhone simulator installed (exit code 70).
+
+### Phase A/B/C native feel improvements (branch `claude/upbeat-newton-yUXN8`)
+
+Implemented per the plan in `/root/.claude/plans/optimized-zooming-wilkinson.md`:
+- **A1/A2:** Replaced `UIImpactFeedbackGenerator` haptics with `UIDevice.current.playInputClick()` + `UIInputViewAudioFeedback` conformance. Respects system "Keyboard Clicks" toggle; haptics removed entirely.
+- **A3:** Prediction bar height raised from 36 → 44 pt to match native QuickType bar.
+- **A4:** Key height 42 → 46 pt, row spacing 11 → 12, bottom padding 6 → 8. Shift/delete/return widths made proportional via `GeometryReader`.
+- **A5:** Text replacements via `requestSupplementaryLexicon`; checked before autocorrect in space handler.
+- **A6:** Character preview popup on letter key press.
+- **B1–B4, C1–C10:** Field-aware layout (keyboardType, autocap, secure entry, textContentType), selected-text translate chip, return-key auto-dim, dark appearance override, expanded context, paste chip, globe long-press, space-bar cursor slide.
+
+### Branching rule (user instruction, active)
+- **Do not push to main or merge PRs without explicit "merge" command from user.**
+- CLAUDE.md says push to both feature branch and main — honor both but only on explicit instruction.
