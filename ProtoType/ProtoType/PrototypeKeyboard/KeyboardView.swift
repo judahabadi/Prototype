@@ -688,7 +688,6 @@ struct ProtoTypeKeyboardView: View {
 
     private func accessoryKey(text: String, width: CGFloat) -> some View {
         let id = "key.accessory.\(text)"
-<<<<<<< HEAD
         return Text(text)
             .font(Self.funcKeyFont)
             .foregroundStyle(Self.keyText)
@@ -709,26 +708,6 @@ struct ProtoTypeKeyboardView: View {
                         }
                     }
             )
-=======
-        return Button {
-            flashKey(id)
-            proxy?.insertText(text)
-            proxy?.playInputClick()
-            state.currentPartial = ""
-            if shouldPredict {
-                state.predictions = predictionEngine.nextWords(after: lastContextWord())
-            }
-        } label: {
-            Text(text)
-                .font(Self.funcKeyFont)
-                .foregroundStyle(Self.keyText)
-                .frame(width: width, height: Self.keyHeight)
-                .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .scaleEffect(pressedKey == id ? 0.95 : 1.0)
->>>>>>> origin/main
     }
 
     private func modeKey(width: CGFloat) -> some View {
@@ -844,7 +823,6 @@ struct ProtoTypeKeyboardView: View {
     private func returnKey(width: CGFloat) -> some View {
         let id = "key.return"
         let disabled = returnIsDisabled
-<<<<<<< HEAD
         return returnKeyContent
             .font(Self.funcKeyFont)
             .foregroundStyle(Self.keyText)
@@ -867,28 +845,6 @@ struct ProtoTypeKeyboardView: View {
                         proxy?.playInputClick()
                     }
             )
-=======
-        return Button {
-            guard !disabled else { return }
-            flashKey(id)
-            proxy?.insertText("\n")
-            state.currentPartial = ""
-            state.predictions = predictionEngine.nextWords(after: lastContextWord())
-            state.shiftOnce = true
-            proxy?.playInputClick()
-        } label: {
-            returnKeyContent
-                .font(Self.funcKeyFont)
-                .foregroundStyle(Self.keyText)
-                .frame(width: width, height: Self.keyHeight)
-                .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .scaleEffect(pressedKey == id ? 0.95 : 1.0)
-        .opacity(disabled ? 0.4 : 1.0)
-        .allowsHitTesting(!disabled)
->>>>>>> origin/main
     }
 
     @ViewBuilder
