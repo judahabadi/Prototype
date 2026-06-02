@@ -68,11 +68,11 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
 
     // MARK: - KeyboardProxy
 
-    func insertText(_ text: String) {
+    override func insertText(_ text: String) {
         textDocumentProxy.insertText(text)
     }
 
-    func deleteBackward() {
+    override func deleteBackward() {
         textDocumentProxy.deleteBackward()
     }
 
