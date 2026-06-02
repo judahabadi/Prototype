@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		02020F482FABB5EA000B3D50 /* PrototypeKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 02020F412FABB5EA000B3D50 /* PrototypeKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		BEEF020200000000000A0001 /* KeyboardKit in Frameworks */ = {isa = PBXBuildFile; productRef = BEEF020100000000000A0001 /* KeyboardKit */; };
+		BEEF020300000000000A0001 /* KeyboardKit in Embed Frameworks */ = {isa = PBXBuildFile; productRef = BEEF020100000000000A0001 /* KeyboardKit */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 
 /* End PBXBuildFile section */
 
@@ -46,6 +47,17 @@
 				02020F482FABB5EA000B3D50 /* PrototypeKeyboard.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BEEF020400000000000A0001 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				BEEF020300000000000A0001 /* KeyboardKit in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -235,6 +247,7 @@
 				02020F3D2FABB5EA000B3D50 /* Sources */,
 				02020F3E2FABB5EA000B3D50 /* Frameworks */,
 				02020F3F2FABB5EA000B3D50 /* Resources */,
+				BEEF020400000000000A0001 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
