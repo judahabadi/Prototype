@@ -1,15 +1,16 @@
 import UIKit
 import SwiftUI
+import KeyboardKit
 
-final class KeyboardViewController: UIInputViewController, KeyboardProxy, UIInputViewAudioFeedback {
-    private var state: KeyboardState!
-    private var hosting: UIHostingController<KeyboardView>!
-    private var predictionEngine: PredictionEngine!
+final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, UIInputViewAudioFeedback {
+
+    // Renamed from 'state' to avoid conflict with KeyboardInputViewController.state
+    var kbState: KeyboardState!
+    var predictionEngine: PredictionEngine!
     private var lexicon: [String: String] = [:]
 
     override func viewDidLoad() {
-        super.viewDidLoad()
-
+        // Initialize our state BEFORE super — KK calls viewWillSetupKeyboardView() from super.viewDidLoad()
         let defaults = AppGroup.defaults
         defaults.set(true, forKey: "keyboardDidLoad")
         let nativeRaw = defaults.string(forKey: AppGroup.nativeKey) ?? Language.english.rawValue
@@ -20,39 +21,34 @@ final class KeyboardViewController: UIInputViewController, KeyboardProxy, UIInpu
             target = native == .english ? .spanish : .english
         }
 
-        state = KeyboardState(native: native, target: target)
+        kbState = KeyboardState(native: native, target: target)
         predictionEngine = PredictionEngine()
         predictionEngine.load(from: native, to: target)
-        state.predictions = predictionEngine.topPredictions()
+        kbState.predictions = predictionEngine.topPredictions()
 
-        let view = KeyboardView(
-            state: state,
-            proxy: self,
-            predictionEngine: predictionEngine
-        )
-        let host = UIHostingController(rootView: view)
-        host.view.backgroundColor = .clear
-        host.view.translatesAutoresizingMaskIntoConstraints = false
+        super.viewDidLoad()
 
-        addChild(host)
-        self.view.addSubview(host.view)
-        host.didMove(toParent: self)
-        self.hosting = host
-
-        NSLayoutConstraint.activate([
-            host.view.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
-            host.view.trailingAnchor.constraint(equalTo: self.view.trailingAnchor),
-            host.view.topAnchor.constraint(equalTo: self.view.topAnchor),
-            host.view.bottomAnchor.constraint(equalTo: self.view.bottomAnchor)
-        ])
+        // KK's state is ready after super
+        state.keyboardContext.locale = Locale(identifier: native.appleTranslationLocale)
 
         reloadLexicon()
+    }
+
+    override func viewWillSetupKeyboardView() {
+        super.viewWillSetupKeyboardView()
+        setupKeyboardView { [self] _ in
+            ProtoTypeKeyboardView(
+                state: kbState,
+                proxy: self,
+                predictionEngine: predictionEngine
+            )
+        }
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         reloadLexicon()
-        state.contextSignal += 1
+        kbState.contextSignal += 1
     }
 
     private func reloadLexicon() {
@@ -67,8 +63,10 @@ final class KeyboardViewController: UIInputViewController, KeyboardProxy, UIInpu
 
     override func textDidChange(_ textInput: UITextInput?) {
         super.textDidChange(textInput)
-        state.contextSignal += 1
+        kbState.contextSignal += 1
     }
+
+    // MARK: - KeyboardProxy
 
     func insertText(_ text: String) {
         textDocumentProxy.insertText(text)

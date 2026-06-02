@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 import Translation
 
-struct KeyboardView: View {
+struct ProtoTypeKeyboardView: View {
     @Bindable var state: KeyboardState
     weak var proxy: (any KeyboardProxy)?
     let predictionEngine: PredictionEngine
@@ -91,21 +91,17 @@ struct KeyboardView: View {
         }
     }
 
-    // Native iOS keyboard palette (matches the stock keyboard in light + dark).
-    // The board is CLEAR so the system's own keyboard backdrop shows through —
-    // this guarantees our background matches the top strip and globe/mic area
-    // the system draws around us. Keys are opaque and float on that backdrop.
     private static func dynamic(light: UIColor, dark: UIColor) -> Color {
         Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? dark : light })
     }
     private static let board = Color.clear
     private static let letterKeyColor = dynamic(
         light: .white,
-        dark: UIColor(red: 110/255, green: 110/255, blue: 115/255, alpha: 1)   // #6E6E73
+        dark: UIColor(red: 110/255, green: 110/255, blue: 115/255, alpha: 1)
     )
     private static let funcKeyColor = dynamic(
-        light: UIColor(red: 172/255, green: 177/255, blue: 186/255, alpha: 1), // #ACB1BA — Apple function key grey
-        dark: UIColor(red: 59/255, green: 59/255, blue: 62/255, alpha: 1)      // #3B3B3E
+        light: UIColor(red: 172/255, green: 177/255, blue: 186/255, alpha: 1),
+        dark: UIColor(red: 59/255, green: 59/255, blue: 62/255, alpha: 1)
     )
     private static let keyShadow = Color.black.opacity(0.3)
     private static let keyText = Color(uiColor: .label)
@@ -176,10 +172,6 @@ struct KeyboardView: View {
         return trimmed.components(separatedBy: separators).filter { !$0.isEmpty }.last ?? ""
     }
 
-    private func refreshNextWordPredictions() {
-        state.predictions = predictionEngine.nextWords(after: lastContextWord())
-    }
-
     private func updateTranslationConfig() {
         let source = Locale.Language(identifier: state.nativeLanguage.appleTranslationLocale)
         let target = Locale.Language(identifier: state.targetLanguage.appleTranslationLocale)
@@ -189,7 +181,6 @@ struct KeyboardView: View {
             case .installed, .supported:
                 translationConfig = TranslationSession.Configuration(source: source, target: target)
             case .unsupported:
-                // Apple Translation doesn't cover this pair; MyMemory fallback handles it
                 translationConfig = nil
                 TranslationService.shared.clearAppleSession()
             @unknown default:
@@ -294,7 +285,7 @@ struct KeyboardView: View {
             Image(systemName: "character.bubble")
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(Color.blue)
-            Text("Translate “\(selection)”")
+            Text("Translate \"\(selection)\"")
                 .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(Color.blue)
                 .lineLimit(1)
@@ -398,7 +389,7 @@ struct KeyboardView: View {
 
     // MARK: - Keyboard rows
 
-    private static let letterRowCount: CGFloat = 4 // 3 letter rows + bottom
+    private static let letterRowCount: CGFloat = 4
     private static var keyboardAreaHeight: CGFloat {
         keyHeight * letterRowCount + rowSpacing * (letterRowCount - 1)
     }
@@ -506,60 +497,54 @@ struct KeyboardView: View {
     }
 
     // MARK: - Keys
+    // DragGesture(minimumDistance: 0) fires on finger-lift with zero recognition delay,
+    // eliminating the ~100ms wait that SwiftUI Button has for tap disambiguation.
 
     private func letterKey(_ ch: String) -> some View {
         let id = "key.\(ch)"
-        return Button {
-            flashKey(id)
-            let isLetter = ch.count == 1 && (ch.first?.isLetter ?? false)
-            let toInsert: String
-            if isLetter {
-                let upper = state.capsLock || state.shiftOnce || autocapPolicy == .all
-                if upper {
-                    toInsert = ch.uppercased()
-                } else {
-                    toInsert = ch
+        return Text(displayChar(ch))
+            .font(Self.keyFont)
+            .foregroundStyle(Self.keyText)
+            .frame(maxWidth: .infinity, minHeight: Self.keyHeight, maxHeight: Self.keyHeight)
+            .background(keyShape(filled: Self.letterKeyColor, pressed: pressedKey == id))
+            .contentShape(Rectangle())
+            .scaleEffect(pressedKey == id ? 0.95 : 1.0)
+            .background(
+                GeometryReader { g in
+                    Color.clear
+                        .onChange(of: previewKey) { _, newValue in
+                            if newValue == ch {
+                                previewFrame = g.frame(in: .named(Self.keyboardSpace))
+                            }
+                        }
                 }
-                if state.shiftOnce { state.shiftOnce = false }
-                state.currentPartial.append(toInsert.lowercased())
-            } else {
-                toInsert = ch
-            }
-            proxy?.insertText(toInsert)
-            proxy?.playInputClick()
-
-            if isLetter && shouldPredict {
-                state.predictions = predictionEngine.predictions(for: state.currentPartial)
-            }
-        } label: {
-            Text(displayChar(ch))
-                .font(Self.keyFont)
-                .foregroundStyle(Self.keyText)
-                .frame(maxWidth: .infinity, minHeight: Self.keyHeight, maxHeight: Self.keyHeight)
-                .background(keyShape(filled: Self.letterKeyColor, pressed: pressedKey == id))
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .scaleEffect(pressedKey == id ? 0.95 : 1.0)
-        .background(
-            GeometryReader { g in
-                Color.clear
-                    .onChange(of: previewKey) { _, newValue in
-                        if newValue == ch {
-                            previewFrame = g.frame(in: .named(Self.keyboardSpace))
+            )
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in
+                        if pressedKey != id { pressedKey = id }
+                        if previewKey != ch { previewKey = ch }
+                    }
+                    .onEnded { _ in
+                        previewKey = nil
+                        flashKey(id)
+                        let isLetter = ch.count == 1 && (ch.first?.isLetter ?? false)
+                        let toInsert: String
+                        if isLetter {
+                            let upper = state.capsLock || state.shiftOnce || autocapPolicy == .all
+                            toInsert = upper ? ch.uppercased() : ch
+                            if state.shiftOnce { state.shiftOnce = false }
+                            state.currentPartial.append(toInsert.lowercased())
+                        } else {
+                            toInsert = ch
+                        }
+                        proxy?.insertText(toInsert)
+                        proxy?.playInputClick()
+                        if isLetter && shouldPredict {
+                            state.predictions = predictionEngine.predictions(for: state.currentPartial)
                         }
                     }
-            }
-        )
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    if previewKey != ch { previewKey = ch }
-                }
-                .onEnded { _ in
-                    if previewKey == ch { previewKey = nil }
-                }
-        )
+            )
     }
 
     private func displayChar(_ ch: String) -> String {
@@ -570,32 +555,34 @@ struct KeyboardView: View {
 
     private func shiftKey(width: CGFloat) -> some View {
         let id = "key.shift"
-        return Button {
-            flashKey(id)
-            let now = Date()
-            if state.capsLock {
-                state.capsLock = false
-                state.shiftOnce = false
-                lastShiftTapTime = nil
-            } else if let last = lastShiftTapTime, now.timeIntervalSince(last) < 0.3 {
-                state.capsLock = true
-                state.shiftOnce = false
-                lastShiftTapTime = nil
-            } else {
-                state.shiftOnce.toggle()
-                lastShiftTapTime = now
-            }
-            proxy?.playInputClick()
-        } label: {
-            Image(systemName: state.capsLock ? "capslock.fill" : (state.shiftOnce ? "shift.fill" : "shift"))
-                .font(Self.funcKeyFont)
-                .foregroundStyle(Self.keyText)
-                .frame(width: width, height: Self.keyHeight)
-                .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .scaleEffect(pressedKey == id ? 0.95 : 1.0)
+        return Image(systemName: state.capsLock ? "capslock.fill" : (state.shiftOnce ? "shift.fill" : "shift"))
+            .font(Self.funcKeyFont)
+            .foregroundStyle(Self.keyText)
+            .frame(width: width, height: Self.keyHeight)
+            .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
+            .contentShape(Rectangle())
+            .scaleEffect(pressedKey == id ? 0.95 : 1.0)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in pressedKey = id }
+                    .onEnded { _ in
+                        flashKey(id)
+                        let now = Date()
+                        if state.capsLock {
+                            state.capsLock = false
+                            state.shiftOnce = false
+                            lastShiftTapTime = nil
+                        } else if let last = lastShiftTapTime, now.timeIntervalSince(last) < 0.3 {
+                            state.capsLock = true
+                            state.shiftOnce = false
+                            lastShiftTapTime = nil
+                        } else {
+                            state.shiftOnce.toggle()
+                            lastShiftTapTime = now
+                        }
+                        proxy?.playInputClick()
+                    }
+            )
     }
 
     private func deleteKey(width: CGFloat) -> some View {
@@ -664,20 +651,22 @@ struct KeyboardView: View {
 
     private func altSymbolToggle(_ label: String, width: CGFloat) -> some View {
         let id = "key.alt.\(label)"
-        return Button {
-            flashKey(id)
-            state.isExtendedSymbols.toggle()
-            proxy?.playInputClick()
-        } label: {
-            Text(label)
-                .font(Self.funcKeyFont)
-                .foregroundStyle(Self.keyText)
-                .frame(width: width, height: Self.keyHeight)
-                .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .scaleEffect(pressedKey == id ? 0.95 : 1.0)
+        return Text(label)
+            .font(Self.funcKeyFont)
+            .foregroundStyle(Self.keyText)
+            .frame(width: width, height: Self.keyHeight)
+            .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
+            .contentShape(Rectangle())
+            .scaleEffect(pressedKey == id ? 0.95 : 1.0)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in pressedKey = id }
+                    .onEnded { _ in
+                        flashKey(id)
+                        state.isExtendedSymbols.toggle()
+                        proxy?.playInputClick()
+                    }
+            )
     }
 
     // MARK: - Bottom row
@@ -699,43 +688,47 @@ struct KeyboardView: View {
 
     private func accessoryKey(text: String, width: CGFloat) -> some View {
         let id = "key.accessory.\(text)"
-        return Button {
-            flashKey(id)
-            proxy?.insertText(text)
-            proxy?.playInputClick()
-            state.currentPartial = ""
-            if shouldPredict {
-                state.predictions = predictionEngine.nextWords(after: lastContextWord())
-            }
-        } label: {
-            Text(text)
-                .font(Self.funcKeyFont)
-                .foregroundStyle(Self.keyText)
-                .frame(width: width, height: Self.keyHeight)
-                .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .scaleEffect(pressedKey == id ? 0.95 : 1.0)
+        return Text(text)
+            .font(Self.funcKeyFont)
+            .foregroundStyle(Self.keyText)
+            .frame(width: width, height: Self.keyHeight)
+            .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
+            .contentShape(Rectangle())
+            .scaleEffect(pressedKey == id ? 0.95 : 1.0)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in pressedKey = id }
+                    .onEnded { _ in
+                        flashKey(id)
+                        proxy?.insertText(text)
+                        proxy?.playInputClick()
+                        state.currentPartial = ""
+                        if shouldPredict {
+                            state.predictions = predictionEngine.nextWords(after: lastContextWord())
+                        }
+                    }
+            )
     }
 
     private func modeKey(width: CGFloat) -> some View {
         let id = "key.mode"
-        return Button {
-            flashKey(id)
-            state.isSymbolMode.toggle()
-            state.isExtendedSymbols = false
-            proxy?.playInputClick()
-        } label: {
-            Text(state.isSymbolMode ? "ABC" : "123")
-                .font(Self.funcKeyFont)
-                .foregroundStyle(Self.keyText)
-                .frame(width: width, height: Self.keyHeight)
-                .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .scaleEffect(pressedKey == id ? 0.95 : 1.0)
+        return Text(state.isSymbolMode ? "ABC" : "123")
+            .font(Self.funcKeyFont)
+            .foregroundStyle(Self.keyText)
+            .frame(width: width, height: Self.keyHeight)
+            .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
+            .contentShape(Rectangle())
+            .scaleEffect(pressedKey == id ? 0.95 : 1.0)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in pressedKey = id }
+                    .onEnded { _ in
+                        flashKey(id)
+                        state.isSymbolMode.toggle()
+                        state.isExtendedSymbols = false
+                        proxy?.playInputClick()
+                    }
+            )
     }
 
     private func globeKey(width: CGFloat) -> some View {
@@ -761,19 +754,21 @@ struct KeyboardView: View {
 
     private func languagePickerKey(width: CGFloat) -> some View {
         let id = "key.picker"
-        return Button {
-            flashKey(id)
-            state.showLanguagePicker = true
-            proxy?.playInputClick()
-        } label: {
-            Text(state.targetLanguage.flag)
-                .font(.system(size: 18))
-                .frame(width: width, height: Self.keyHeight)
-                .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .scaleEffect(pressedKey == id ? 0.95 : 1.0)
+        return Text(state.targetLanguage.flag)
+            .font(.system(size: 18))
+            .frame(width: width, height: Self.keyHeight)
+            .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
+            .contentShape(Rectangle())
+            .scaleEffect(pressedKey == id ? 0.95 : 1.0)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in pressedKey = id }
+                    .onEnded { _ in
+                        flashKey(id)
+                        state.showLanguagePicker = true
+                        proxy?.playInputClick()
+                    }
+            )
     }
 
     @State private var spaceDragStartX: CGFloat? = nil
@@ -828,32 +823,32 @@ struct KeyboardView: View {
     private func returnKey(width: CGFloat) -> some View {
         let id = "key.return"
         let disabled = returnIsDisabled
-        return Button {
-            guard !disabled else { return }
-            flashKey(id)
-            proxy?.insertText("\n")
-            state.currentPartial = ""
-            state.predictions = predictionEngine.nextWords(after: lastContextWord())
-            state.shiftOnce = true
-            proxy?.playInputClick()
-        } label: {
-            returnKeyContent
-                .font(Self.funcKeyFont)
-                .foregroundStyle(Self.keyText)
-                .frame(width: width, height: Self.keyHeight)
-                .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .scaleEffect(pressedKey == id ? 0.95 : 1.0)
-        .opacity(disabled ? 0.4 : 1.0)
-        .allowsHitTesting(!disabled)
+        return returnKeyContent
+            .font(Self.funcKeyFont)
+            .foregroundStyle(Self.keyText)
+            .frame(width: width, height: Self.keyHeight)
+            .background(keyShape(filled: Self.funcKeyColor, pressed: pressedKey == id))
+            .contentShape(Rectangle())
+            .scaleEffect(pressedKey == id ? 0.95 : 1.0)
+            .opacity(disabled ? 0.4 : 1.0)
+            .allowsHitTesting(!disabled)
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in if !disabled { pressedKey = id } }
+                    .onEnded { _ in
+                        guard !disabled else { return }
+                        flashKey(id)
+                        proxy?.insertText("\n")
+                        state.currentPartial = ""
+                        state.predictions = predictionEngine.nextWords(after: lastContextWord())
+                        state.shiftOnce = true
+                        proxy?.playInputClick()
+                    }
+            )
     }
 
     @ViewBuilder
     private var returnKeyContent: some View {
-        // Apple shows the ↵ glyph only for the default return type; semantic
-        // types (search, go, send…) show the word.
         if let label = returnKeyLabel {
             Text(label)
         } else {
@@ -861,8 +856,6 @@ struct KeyboardView: View {
         }
     }
 
-    /// Returns the word for semantic return types, or nil for the default
-    /// type (which renders the ↵ glyph instead).
     private var returnKeyLabel: String? {
         switch proxy?.returnKeyType ?? .default {
         case .search, .google, .yahoo: return "search"
@@ -900,7 +893,6 @@ struct KeyboardView: View {
         let isDoubleTap = (lastSpaceTapTime.map { now.timeIntervalSince($0) < 0.3 } ?? false)
 
         if isDoubleTap {
-            // Replace the previously inserted space with ". "
             proxy?.deleteBackward()
             proxy?.insertText(". ")
             state.shiftOnce = true
@@ -989,8 +981,6 @@ struct KeyboardView: View {
 
     // MARK: - Auto-cap
 
-    /// Sets shiftOnce based on the current text context, respecting the
-    /// host field's autocapitalizationType.
     private func evaluateAutoCap() {
         guard state.currentPartial.isEmpty else { return }
         let ctx = proxy?.documentContextBeforeInput ?? ""
@@ -1071,19 +1061,15 @@ private struct BubbleShape: Shape {
         let bottomR: CGFloat = 5
         let bubbleBottom = rect.maxY - tailHeight
 
-        // Top-left corner
         p.move(to: CGPoint(x: rect.minX, y: rect.minY + topR))
         p.addArc(center: CGPoint(x: rect.minX + topR, y: rect.minY + topR),
                  radius: topR, startAngle: .degrees(180), endAngle: .degrees(270), clockwise: false)
-        // Top edge to top-right corner
         p.addLine(to: CGPoint(x: rect.maxX - topR, y: rect.minY))
         p.addArc(center: CGPoint(x: rect.maxX - topR, y: rect.minY + topR),
                  radius: topR, startAngle: .degrees(270), endAngle: .degrees(0), clockwise: false)
-        // Right edge to bubble bottom
         p.addLine(to: CGPoint(x: rect.maxX, y: bubbleBottom - bottomR))
         p.addArc(center: CGPoint(x: rect.maxX - bottomR, y: bubbleBottom - bottomR),
                  radius: bottomR, startAngle: .degrees(0), endAngle: .degrees(90), clockwise: false)
-        // Bottom edge with tail dip in center
         let tailWidth = rect.width * 0.6
         let tailLeftX = rect.midX - tailWidth / 2
         let tailRightX = rect.midX + tailWidth / 2
@@ -1092,7 +1078,6 @@ private struct BubbleShape: Shape {
                        control: CGPoint(x: tailRightX - tailWidth * 0.15, y: rect.maxY))
         p.addQuadCurve(to: CGPoint(x: tailLeftX, y: bubbleBottom),
                        control: CGPoint(x: tailLeftX + tailWidth * 0.15, y: rect.maxY))
-        // Left edge
         p.addLine(to: CGPoint(x: rect.minX + bottomR, y: bubbleBottom))
         p.addArc(center: CGPoint(x: rect.minX + bottomR, y: bubbleBottom - bottomR),
                  radius: bottomR, startAngle: .degrees(90), endAngle: .degrees(180), clockwise: false)
