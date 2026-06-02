@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy – ProtoType</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 40px 24px 80px;
+            color: #1c1c1e;
+            line-height: 1.7;
+        }
+        h1 { font-size: 2rem; margin-bottom: 4px; }
+        h2 { font-size: 1.1rem; margin-top: 36px; margin-bottom: 8px; color: #1c1c1e; }
+        p, li { color: #3a3a3c; }
+        ul { padding-left: 20px; }
+        a { color: #007aff; }
+        .meta { color: #8e8e93; font-size: 0.9rem; margin-bottom: 40px; }
+        .callout {
+            background: #f2f2f7;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin: 24px 0;
+        }
+        @media (prefers-color-scheme: dark) {
+            body { background: #000; color: #f2f2f7; }
+            h2 { color: #f2f2f7; }
+            p, li { color: #ebebf0cc; }
+            .callout { background: #1c1c1e; }
+        }
+    </style>
+</head>
+<body>
+
+<h1>Privacy Policy</h1>
+<p class="meta">ProtoType · Last updated June 2, 2026</p>
+
+<div class="callout">
+    <strong>Short version:</strong> ProtoType does not collect, store, or sell your personal data.
+    What you type stays on your device. We have no servers that receive your text.
+</div>
+
+<h2>What ProtoType does</h2>
+<p>ProtoType is a keyboard extension that shows a live translation of words you type, powered by Apple's on-device Translation framework. Everything happens locally on your iPhone.</p>
+
+<h2>Data we do not collect</h2>
+<ul>
+    <li>We do not collect or store what you type.</li>
+    <li>We do not create user accounts.</li>
+    <li>We do not use advertising networks or tracking pixels.</li>
+    <li>We do not sell or share data with third parties.</li>
+    <li>We have no analytics or crash-reporting SDKs in the app.</li>
+</ul>
+
+<h2>Translation</h2>
+<p>ProtoType uses <strong>Apple Translation</strong> (on-device) as its primary translation engine. Words you type are processed entirely on your device by Apple's framework and never leave it.</p>
+<p>As a fallback for any language pair not yet supported by Apple Translation, ProtoType may send the word to the <strong>MyMemory translation API</strong> (<a href="https://mymemory.translated.net">mymemory.translated.net</a>). In that case, the individual word — but never surrounding context or identifying information — is transmitted over HTTPS. MyMemory's privacy policy is available at their website.</p>
+
+<h2>Subscriptions and payments</h2>
+<p>ProtoType offers an optional monthly subscription processed entirely by <strong>Apple's App Store</strong> (StoreKit). We never see, store, or process your payment information. Apple's privacy policy governs those transactions.</p>
+<p>ProtoType stores only a Boolean flag (subscribed / not subscribed) locally on your device to determine which features are available.</p>
+
+<h2>Keyboard extension permissions</h2>
+<p>ProtoType requests <strong>Full Access</strong> for the keyboard extension. This is required to use the Apple Translation framework for on-device translation. Full Access does <em>not</em> mean we read or transmit what you type — we do not.</p>
+
+<h2>Data shared between the app and keyboard extension</h2>
+<p>ProtoType uses an App Group (a standard iOS mechanism) to share your selected language pair and subscription status between the main app and the keyboard extension. This data lives entirely on your device and is never transmitted externally.</p>
+
+<h2>Children's privacy</h2>
+<p>ProtoType does not knowingly collect any information from children under 13. The app contains no features designed to collect personal data from any user.</p>
+
+<h2>Changes to this policy</h2>
+<p>If we make material changes, we will update the date at the top of this page. Continued use of the app after changes constitutes acceptance of the updated policy.</p>
+
+<h2>Contact</h2>
+<p>Questions about this policy? Email us at <a href="mailto:support@prototype-app.com">support@prototype-app.com</a></p>
+
+</body>
+</html>

@@ -169,6 +169,17 @@ struct KeyboardView: View {
         pasteAvailable = UIPasteboard.general.hasStrings
     }
 
+    private func lastContextWord() -> String {
+        let before = proxy?.documentContextBeforeInput ?? ""
+        let trimmed = before.trimmingCharacters(in: .whitespacesAndNewlines)
+        let separators = CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters)
+        return trimmed.components(separatedBy: separators).filter { !$0.isEmpty }.last ?? ""
+    }
+
+    private func refreshNextWordPredictions() {
+        state.predictions = predictionEngine.nextWords(after: lastContextWord())
+    }
+
     private func updateTranslationConfig() {
         let source = Locale.Language(identifier: state.nativeLanguage.appleTranslationLocale)
         let target = Locale.Language(identifier: state.targetLanguage.appleTranslationLocale)
@@ -199,7 +210,7 @@ struct KeyboardView: View {
 
     private func freshPredictions(after committedWord: String) -> [Prediction] {
         let recent = recentlyTypedWords()
-        let pool = predictionEngine.topPredictions(excluding: committedWord, limit: 10)
+        let pool = predictionEngine.nextWords(after: committedWord, limit: 10)
         return pool
             .filter { !recent.contains($0.source.lowercased()) }
             .prefix(2)
@@ -273,7 +284,7 @@ struct KeyboardView: View {
         state.currentPartial = ""
         pasteAvailable = false
         if shouldPredict {
-            state.predictions = predictionEngine.topPredictions()
+            state.predictions = predictionEngine.nextWords(after: lastContextWord())
         }
         evaluateAutoCap()
     }
@@ -374,7 +385,7 @@ struct KeyboardView: View {
         proxy?.playInputClick()
 
         state.currentPartial = ""
-        state.predictions = predictionEngine.topPredictions()
+        state.predictions = predictionEngine.nextWords(after: lastContextWord())
         evaluateAutoCap()
     }
 
@@ -632,7 +643,7 @@ struct KeyboardView: View {
             state.currentPartial.removeLast()
         }
         state.predictions = state.currentPartial.isEmpty
-            ? predictionEngine.topPredictions()
+            ? predictionEngine.nextWords(after: lastContextWord())
             : predictionEngine.predictions(for: state.currentPartial)
     }
 
@@ -653,7 +664,7 @@ struct KeyboardView: View {
         deleteTimer?.invalidate()
         deleteTimer = nil
         state.predictions = state.currentPartial.isEmpty
-            ? predictionEngine.topPredictions()
+            ? predictionEngine.nextWords(after: lastContextWord())
             : predictionEngine.predictions(for: state.currentPartial)
     }
 
@@ -700,7 +711,7 @@ struct KeyboardView: View {
             proxy?.playInputClick()
             state.currentPartial = ""
             if shouldPredict {
-                state.predictions = predictionEngine.topPredictions()
+                state.predictions = predictionEngine.nextWords(after: lastContextWord())
             }
         } label: {
             Text(text)
@@ -828,7 +839,7 @@ struct KeyboardView: View {
             flashKey(id)
             proxy?.insertText("\n")
             state.currentPartial = ""
-            state.predictions = predictionEngine.topPredictions()
+            state.predictions = predictionEngine.nextWords(after: lastContextWord())
             state.shiftOnce = true
             proxy?.playInputClick()
         } label: {
@@ -902,7 +913,7 @@ struct KeyboardView: View {
             proxy?.playInputClick()
             lastSpaceTapTime = nil
             state.currentPartial = ""
-            state.predictions = predictionEngine.topPredictions()
+            state.predictions = predictionEngine.nextWords(after: lastContextWord())
             return
         }
         lastSpaceTapTime = now
@@ -919,7 +930,7 @@ struct KeyboardView: View {
             proxy?.playInputClick()
             state.currentPartial = ""
             if shouldPredict {
-                state.predictions = predictionEngine.topPredictions()
+                state.predictions = predictionEngine.nextWords(after: lastContextWord())
             }
             evaluateAutoCap()
             return
@@ -943,7 +954,7 @@ struct KeyboardView: View {
 
         guard !finalWord.isEmpty, shouldPredict else {
             if shouldPredict {
-                state.predictions = predictionEngine.topPredictions()
+                state.predictions = predictionEngine.nextWords(after: lastContextWord())
             }
             return
         }
