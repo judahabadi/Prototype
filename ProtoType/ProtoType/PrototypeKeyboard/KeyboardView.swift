@@ -429,12 +429,6 @@ struct KeyboardView: View {
 
     private var keyboardLayout: [[String]] {
         switch state.nativeLanguage {
-        case .hebrew:
-            return [
-                ["ק","ר","א","ט","ו","ן","ם","פ"],
-                ["ש","ד","ג","כ","ע","י","ח","ל","ך","ף"],
-                ["ז","ס","ב","ה","נ","מ","צ","ת","ץ"]
-            ]
         case .arabic:
             return [
                 ["ض","ص","ث","ق","ف","غ","ع","ه","خ","ح"],
