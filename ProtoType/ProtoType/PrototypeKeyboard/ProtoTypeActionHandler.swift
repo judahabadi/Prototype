@@ -1,5 +1,5 @@
 import KeyboardKit
-import Foundation
+import UIKit
 
 final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
 
