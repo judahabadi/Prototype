@@ -1,16 +1,16 @@
 import UIKit
 import SwiftUI
-import KeyboardKit
 
-final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, UIInputViewAudioFeedback {
+final class KeyboardViewController: UIInputViewController, KeyboardProxy, UIInputViewAudioFeedback {
 
-    var kbState: KeyboardState!
-    var predictionEngine: PredictionEngine!
+    private var kbState: KeyboardState!
+    private var predictionEngine: PredictionEngine!
     private var hosting: UIHostingController<ProtoTypeKeyboardView>?
     private var lexicon: [String: String] = [:]
 
     override func viewDidLoad() {
-        // Initialize our state BEFORE super — KK may call viewWillSetupKeyboardView inside super
+        super.viewDidLoad()
+
         let defaults = AppGroup.defaults
         defaults.set(true, forKey: "keyboardDidLoad")
         let nativeRaw = defaults.string(forKey: AppGroup.nativeKey) ?? Language.english.rawValue
@@ -26,21 +26,6 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
         predictionEngine.load(from: native, to: target)
         kbState.predictions = predictionEngine.topPredictions()
 
-        super.viewDidLoad()
-
-        state.keyboardContext.locale = Locale(identifier: native.appleTranslationLocale)
-
-        setupKeyboardHostingController()
-        reloadLexicon()
-    }
-
-    // Override KK's view setup — don't call super so KK's blank SystemKeyboard isn't added
-    override func viewWillSetupKeyboardView() {
-        setupKeyboardHostingController()
-    }
-
-    private func setupKeyboardHostingController() {
-        guard hosting == nil else { return }
         let keyboardView = ProtoTypeKeyboardView(
             state: kbState,
             proxy: self,
@@ -59,6 +44,8 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
             host.view.bottomAnchor.constraint(equalTo: self.view.bottomAnchor)
         ])
         hosting = host
+
+        reloadLexicon()
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -84,11 +71,11 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
 
     // MARK: - KeyboardProxy
 
-    override func insertText(_ text: String) {
+    func insertText(_ text: String) {
         textDocumentProxy.insertText(text)
     }
 
-    override func deleteBackward() {
+    func deleteBackward() {
         textDocumentProxy.deleteBackward()
     }
 
@@ -128,9 +115,7 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
         predictionEngine?.evict()
     }
 
-    override var needsInputModeSwitchKey: Bool {
-        super.needsInputModeSwitchKey
-    }
+    override var needsInputModeSwitchKey: Bool { super.needsInputModeSwitchKey }
 
     var documentContextBeforeInput: String? { textDocumentProxy.documentContextBeforeInput }
     var documentContextAfterInput: String? { textDocumentProxy.documentContextAfterInput }
@@ -147,4 +132,3 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
 
     var enableInputClicksWhenVisible: Bool { true }
 }
-
