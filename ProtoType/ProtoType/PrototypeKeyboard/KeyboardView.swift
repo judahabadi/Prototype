@@ -7,7 +7,7 @@ struct ProtoTypeKeyboardView: View {
     @Bindable var state: KeyboardState
     weak var proxy: (any KeyboardProxy)?
     let predictionEngine: PredictionEngine
-    let kkState: Keyboard.State
+    let kkServices: Keyboard.Services
 
     @State private var pasteAvailable: Bool = false
     @State private var translationConfig: TranslationSession.Configuration?
@@ -39,7 +39,7 @@ struct ProtoTypeKeyboardView: View {
 
     var body: some View {
         KeyboardView(
-            state: kkState,
+            services: kkServices,
             buttonContent: { $0.view },
             buttonView: { $0.view },
             collapsedView: { $0.view },

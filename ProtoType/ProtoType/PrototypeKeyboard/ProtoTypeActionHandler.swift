@@ -1,7 +1,7 @@
 import KeyboardKit
 import Foundation
 
-final class ProtoTypeActionHandler: StandardKeyboardActionHandler {
+final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
 
     private let kbState: KeyboardState
     private let predictionEngine: PredictionEngine
@@ -19,36 +19,42 @@ final class ProtoTypeActionHandler: StandardKeyboardActionHandler {
         super.init(controller: controller)
     }
 
-    override func handle(_ gesture: KeyboardGesture, on action: KeyboardAction) {
-        guard gesture == .release || gesture == .press else {
-            super.handle(gesture, on: action)
-            return
-        }
+    override func action(
+        for gesture: Keyboard.Gesture,
+        on action: KeyboardAction
+    ) -> KeyboardAction.GestureAction? {
+        let standard = super.action(for: gesture, on: action)
 
-        switch action {
-        case .space where gesture == .release:
-            handleSpace()
+        switch (gesture, action) {
+        case (.release, .space):
+            return { [weak self] _ in self?.handleSpace() }
 
-        case .character(let char) where gesture == .release:
-            super.handle(gesture, on: action)
-            let isLetter = char.count == 1 && (char.first?.isLetter ?? false)
-            if isLetter {
-                kbState.currentPartial.append(char.lowercased())
-                kbState.predictions = predictionEngine.predictions(for: kbState.currentPartial)
-            } else {
-                kbState.currentPartial = ""
-                kbState.predictions = predictionEngine.nextWords(after: lastContextWord())
+        case (.release, .character(let char)):
+            return { [weak self] controller in
+                standard?(controller)
+                guard let self else { return }
+                let isLetter = char.count == 1 && (char.first?.isLetter ?? false)
+                if isLetter {
+                    self.kbState.currentPartial.append(char.lowercased())
+                    self.kbState.predictions = self.predictionEngine.predictions(for: self.kbState.currentPartial)
+                } else {
+                    self.kbState.currentPartial = ""
+                    self.kbState.predictions = self.predictionEngine.nextWords(after: self.lastContextWord())
+                }
             }
 
-        case .backspace where gesture == .release:
-            super.handle(gesture, on: action)
-            if !kbState.currentPartial.isEmpty { kbState.currentPartial.removeLast() }
-            kbState.predictions = kbState.currentPartial.isEmpty
-                ? predictionEngine.nextWords(after: lastContextWord())
-                : predictionEngine.predictions(for: kbState.currentPartial)
+        case (.release, .backspace):
+            return { [weak self] controller in
+                standard?(controller)
+                guard let self else { return }
+                if !self.kbState.currentPartial.isEmpty { self.kbState.currentPartial.removeLast() }
+                self.kbState.predictions = self.kbState.currentPartial.isEmpty
+                    ? self.predictionEngine.nextWords(after: self.lastContextWord())
+                    : self.predictionEngine.predictions(for: self.kbState.currentPartial)
+            }
 
         default:
-            super.handle(gesture, on: action)
+            return standard
         }
     }
 
@@ -56,32 +62,27 @@ final class ProtoTypeActionHandler: StandardKeyboardActionHandler {
 
     private func handleSpace() {
         let raw = kbState.currentPartial
-        let cleaned = raw.lowercased()
-            .trimmingCharacters(in: .punctuationCharacters)
+        let cleaned = raw.lowercased().trimmingCharacters(in: .punctuationCharacters)
+        let proxy = keyboardContext.textDocumentProxy
 
-        // Text replacement wins over everything
-        if !cleaned.isEmpty,
-           let expansion = getLexicon()[cleaned] {
-            for _ in 0..<raw.count { keyboardController?.textDocumentProxy.deleteBackward() }
-            keyboardController?.textDocumentProxy.insertText(expansion + " ")
+        if !cleaned.isEmpty, let expansion = getLexicon()[cleaned] {
+            for _ in 0..<raw.count { proxy.deleteBackward() }
+            proxy.insertText(expansion + " ")
             kbState.currentPartial = ""
             kbState.predictions = predictionEngine.nextWords(after: lastContextWord())
             return
         }
 
-        // Autocorrect
         var finalWord = cleaned
         if !cleaned.isEmpty,
            let correction = AutocorrectService.correct(word: cleaned, language: currentNativeLanguage()),
            correction.lowercased() != cleaned {
-            for _ in 0..<raw.count { keyboardController?.textDocumentProxy.deleteBackward() }
-            keyboardController?.textDocumentProxy.insertText(correction)
+            for _ in 0..<raw.count { proxy.deleteBackward() }
+            proxy.insertText(correction)
             finalWord = correction.lowercased()
         }
 
-        // Let KK insert the space
-        super.handle(.release, on: .space)
-
+        proxy.insertText(" ")
         kbState.currentPartial = ""
 
         guard !finalWord.isEmpty else {
@@ -89,7 +90,6 @@ final class ProtoTypeActionHandler: StandardKeyboardActionHandler {
             return
         }
 
-        // Build translation chip
         let localTranslation = predictionEngine.translation(for: finalWord) ?? ""
         let chip0 = Prediction(
             source: finalWord,
@@ -128,14 +128,14 @@ final class ProtoTypeActionHandler: StandardKeyboardActionHandler {
     // MARK: - Helpers
 
     private func lastContextWord() -> String {
-        let before = keyboardController?.textDocumentProxy.documentContextBeforeInput ?? ""
+        let before = keyboardContext.textDocumentProxy.documentContextBeforeInput ?? ""
         let trimmed = before.trimmingCharacters(in: .whitespacesAndNewlines)
         let separators = CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters)
         return trimmed.components(separatedBy: separators).filter { !$0.isEmpty }.last ?? ""
     }
 
     private func freshPredictions(after word: String) -> [Prediction] {
-        let before = (keyboardController?.textDocumentProxy.documentContextBeforeInput ?? "").lowercased()
+        let before = (keyboardContext.textDocumentProxy.documentContextBeforeInput ?? "").lowercased()
         let separators = CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters)
         let recent = Set(before.components(separatedBy: separators).filter { !$0.isEmpty && $0.count > 1 })
         return predictionEngine.nextWords(after: word, limit: 10)
