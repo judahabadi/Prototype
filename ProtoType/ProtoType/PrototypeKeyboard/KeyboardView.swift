@@ -66,7 +66,14 @@ struct ProtoTypeKeyboardView: View {
         .keyboardCalloutActions { action in
             // Long-press accent popups (é, ñ, ü, ç…) for Latin-script languages,
             // falling back to KeyboardKit's standard callouts for everything else.
-            AccentCallouts.actions(for: action, context: keyboardContext)
+            // The return type is inferred from the modifier so we never have to
+            // name KeyboardKit's callout-actions type (its namespace varies).
+            if case let .character(char) = action,
+               char.count == 1, let c = char.first,
+               let base = AccentCallouts.variants[Character(c.lowercased())] {
+                return .init(characters: c.isUppercase ? base.uppercased() : base)
+            }
+            return .standardCalloutActions(for: action, context: keyboardContext)
         }
         .preferredColorScheme(preferredScheme)
         .sheet(isPresented: $state.showLanguagePicker) {
@@ -311,14 +318,14 @@ struct ProtoTypeKeyboardView: View {
     }
 }
 
-/// Long-press accent/diacritic callouts for letter keys. Covers the Latin-script
-/// target languages (Spanish, French, German, Portuguese, etc.); other keys and
-/// non-Latin scripts fall back to KeyboardKit's standard callout actions.
+/// Long-press accent/diacritic callout data for letter keys. Covers the
+/// Latin-script target languages (Spanish, French, German, Portuguese, etc.);
+/// other keys and non-Latin scripts fall back to KeyboardKit's standard callouts.
 enum AccentCallouts {
 
     /// Base lowercase letter → the characters shown in its long-press callout.
     /// The base letter is listed first so it stays the default on a quick tap.
-    private static let variants: [Character: String] = [
+    static let variants: [Character: String] = [
         "a": "aàáâäæãåā",
         "c": "cçćč",
         "e": "eèéêëēėę",
@@ -332,14 +339,4 @@ enum AccentCallouts {
         "z": "zžźż",
         "g": "gğ"
     ]
-
-    static func actions(for action: KeyboardAction, context: KeyboardContext) -> KeyboardCallout.Actions {
-        if case let .character(char) = action,
-           char.count == 1, let c = char.first,
-           let base = variants[Character(c.lowercased())] {
-            // Match the callout's case to the key's current case.
-            return .init(characters: c.isUppercase ? base.uppercased() : base)
-        }
-        return .standardCalloutActions(for: action, context: context)
-    }
 }
