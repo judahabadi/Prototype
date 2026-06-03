@@ -44,8 +44,7 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
                 state: self.kbState,
                 proxy: self,
                 predictionEngine: self.predictionEngine,
-                kkServices: controller.services,
-                keyboardContext: controller.state.keyboardContext
+                kkServices: controller.services
             )
         }
     }

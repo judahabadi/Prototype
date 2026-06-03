@@ -8,7 +8,6 @@ struct ProtoTypeKeyboardView: View {
     weak var proxy: (any KeyboardProxy)?
     let predictionEngine: PredictionEngine
     let kkServices: Keyboard.Services
-    let keyboardContext: KeyboardContext
 
     @State private var translationConfig: TranslationSession.Configuration?
 
@@ -63,17 +62,16 @@ struct ProtoTypeKeyboardView: View {
                 }
             }
         )
-        .keyboardCalloutActions { action in
+        .keyboardCalloutActions { params in
             // Long-press accent popups (é, ñ, ü, ç…) for Latin-script languages,
             // falling back to KeyboardKit's standard callouts for everything else.
-            // The return type is inferred from the modifier so we never have to
-            // name KeyboardKit's callout-actions type (its namespace varies).
-            if case let .character(char) = action,
+            if case let .character(char) = params.action,
                char.count == 1, let c = char.first,
                let base = AccentCallouts.variants[Character(c.lowercased())] {
-                return .init(characters: c.isUppercase ? base.uppercased() : base)
+                let chars = c.isUppercase ? base.uppercased() : base
+                return chars.map { KeyboardAction.character(String($0)) }
             }
-            return .standardCalloutActions(for: action, context: keyboardContext)
+            return params.standardActions()
         }
         .preferredColorScheme(preferredScheme)
         .sheet(isPresented: $state.showLanguagePicker) {
