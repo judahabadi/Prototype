@@ -81,6 +81,39 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
     override func textDidChange(_ textInput: UITextInput?) {
         super.textDidChange(textInput)
         kbState?.contextSignal += 1
+        resyncKeyboardCase()
+        // Re-apply on the next runloop tick so it wins even if KeyboardKit adjusts
+        // the case later in its own action pipeline.
+        DispatchQueue.main.async { [weak self] in self?.resyncKeyboardCase() }
+    }
+
+    /// Authoritative auto-capitalization: runs after KeyboardKit's own case sync
+    /// (super.textDidChange) so it wins, fixing the erratic mid-stream capitals
+    /// while honoring the field's autocapitalization type.
+    private func resyncKeyboardCase() {
+        let before = textDocumentProxy.documentContextBeforeInput ?? ""
+        switch textDocumentProxy.autocapitalizationType ?? .sentences {
+        case .allCharacters:
+            state.keyboardContext.keyboardCase = .uppercased
+        case .none:
+            state.keyboardContext.keyboardCase = .lowercased
+        case .words:
+            let atWordStart = before.isEmpty || (before.last?.isWhitespace ?? false)
+            state.keyboardContext.keyboardCase = atWordStart ? .uppercased : .lowercased
+        case .sentences:
+            let atSentenceStart: Bool
+            if before.isEmpty || before.hasSuffix("\n") {
+                atSentenceStart = true
+            } else if before.hasSuffix(" ") {
+                let lastNonSpace = before.reversed().first(where: { $0 != " " })
+                atSentenceStart = lastNonSpace.map { ".!?".contains($0) } ?? true
+            } else {
+                atSentenceStart = false
+            }
+            state.keyboardContext.keyboardCase = atSentenceStart ? .uppercased : .lowercased
+        @unknown default:
+            break
+        }
     }
 
     override func selectionDidChange(_ textInput: UITextInput?) {

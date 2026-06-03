@@ -109,8 +109,9 @@ struct ProtoTypeKeyboardView: View {
             selectionTranslateChip(selection: selection)
                 .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
         } else {
+            let count = visibleChipCount
             HStack(spacing: 0) {
-                ForEach(0..<3, id: \.self) { idx in
+                ForEach(0..<count, id: \.self) { idx in
                     let p = idx < state.predictions.count ? state.predictions[idx] : .empty
                     chipContent(p)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
@@ -123,7 +124,7 @@ struct ProtoTypeKeyboardView: View {
                             guard !p.source.isEmpty, !p.translation.isEmpty else { return }
                             pickPrediction(p, useTranslation: true)
                         }
-                    if idx < 2 {
+                    if idx < count - 1 {
                         Rectangle()
                             .fill(Color(uiColor: .separator))
                             .frame(width: 0.33, height: 20)
@@ -132,6 +133,14 @@ struct ProtoTypeKeyboardView: View {
             }
             .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
         }
+    }
+
+    /// Drop the third chip (keep the first two) when the first chip's
+    /// word + translation is long, instead of shrinking the font to fit three.
+    private var visibleChipCount: Int {
+        let first = state.predictions.first ?? .empty
+        let length = first.source.count + first.translation.count
+        return length >= 12 ? 2 : 3
     }
 
     // MARK: - Selection auto-translate (Feature 2)
@@ -179,27 +188,28 @@ struct ProtoTypeKeyboardView: View {
     }
 
     private func selectionTranslateChip(selection: String) -> some View {
-        HStack(spacing: 6) {
+        let labelColor = Color(uiColor: .label)
+        return HStack(spacing: 6) {
             if selectionTranslating {
                 Text("Translating \"\(selection)\"…")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Color.blue)
+                    .foregroundStyle(labelColor)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 ProgressView().scaleEffect(0.7)
             } else if !selectionTranslation.isEmpty {
                 Image(systemName: "character.bubble")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(Color.blue)
+                    .foregroundStyle(labelColor)
                 Text("\(selection) → \(selectionTranslation)")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(Color.blue)
+                    .foregroundStyle(labelColor)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             } else {
                 Text(selection)
                     .font(.system(size: 16, weight: .regular))
-                    .foregroundStyle(Color(uiColor: .label))
+                    .foregroundStyle(labelColor)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
@@ -229,7 +239,7 @@ struct ProtoTypeKeyboardView: View {
             HStack(spacing: 4) {
                 Text(p.source)
                     .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(Color.blue)
+                    .foregroundStyle(labelColor)
                 Text("/")
                     .font(.system(size: 15))
                     .foregroundStyle(.secondary)
@@ -239,7 +249,7 @@ struct ProtoTypeKeyboardView: View {
         } else if p.translation.isEmpty {
             Text(p.source)
                 .font(.system(size: 17, weight: p.highlighted ? .semibold : .regular))
-                .foregroundStyle(p.highlighted ? Color.blue : labelColor)
+                .foregroundStyle(labelColor)
                 .lineLimit(1).minimumScaleFactor(0.7)
         } else {
             HStack(spacing: 4) {
@@ -251,7 +261,7 @@ struct ProtoTypeKeyboardView: View {
                 Text(p.translation)
                     .font(.system(size: 17, weight: p.highlighted ? .semibold : .regular))
             }
-            .foregroundStyle(p.highlighted ? Color.blue : labelColor)
+            .foregroundStyle(labelColor)
             .lineLimit(1).minimumScaleFactor(0.7)
         }
     }

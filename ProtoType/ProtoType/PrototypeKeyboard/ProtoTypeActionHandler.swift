@@ -21,7 +21,6 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
             return { [weak self] _ in
                 guard let self else { return }
                 self.handleSpace()
-                self.resyncKeyboardCase()
                 self.triggerHaptic()
             }
 
@@ -32,14 +31,15 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
                 self.triggerHaptic()
                 let isLetter = char.count == 1 && (char.first?.isLetter ?? false)
                 if isLetter {
-                    self.kbState.currentPartial.append(char.lowercased())
+                    // Preserve the typed case so the bar matches the text field;
+                    // all dictionary lookups lowercase internally.
+                    self.kbState.currentPartial.append(char)
                     self.updateLivePredictions()
                 } else {
                     self.applySmartPunctuation(for: char)
                     self.kbState.currentPartial = ""
                     self.kbState.predictions = self.predictionEngine.nextWords(after: self.lastContextWord())
                 }
-                self.resyncKeyboardCase()
             }
 
         case (.release, .backspace):
@@ -51,7 +51,6 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
                 // into a previously finished word treats the whole word as current.
                 self.kbState.currentPartial = self.partialBeforeCursor()
                 self.updateLivePredictions()
-                self.resyncKeyboardCase()
             }
 
         default:
@@ -69,11 +68,25 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
             return
         }
 
+        // Completions excluding the typed word itself (UITextChecker returns the
+        // word as its own first completion, which would duplicate the live chip).
         let completions = predictionEngine.predictions(for: partial)
-        let hasCompletion = completions.contains { !$0.source.isEmpty }
+            .filter { !$0.source.isEmpty && $0.source.lowercased() != partial.lowercased() }
 
-        if hasCompletion {
-            setTranslationLayout(partial: partial, completions: completions)
+        if !completions.isEmpty {
+            let chip0 = Prediction(
+                source: partial,
+                translation: predictionEngine.translation(for: partial) ?? "",
+                highlighted: true,
+                isLoading: false
+            )
+            var combined: [Prediction] = [chip0]
+            combined.append(contentsOf: completions.prefix(2).map {
+                Prediction(source: matchedCase($0.source, like: partial), translation: $0.translation, highlighted: false, isLoading: false)
+            })
+            while combined.count < 3 { combined.append(.empty) }
+            kbState.predictions = combined
+            translateMissingChips(partial: partial)
             return
         }
 
@@ -86,7 +99,6 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
             lexicon: lexicon
         )
         if !guesses.isEmpty {
-            liveTranslateTask?.cancel()
             var chips: [Prediction] = [
                 Prediction(
                     source: partial,
@@ -97,7 +109,7 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
             ]
             for (i, guess) in guesses.enumerated() {
                 chips.append(Prediction(
-                    source: guess,
+                    source: matchedCase(guess, like: partial),
                     translation: predictionEngine.translation(for: guess) ?? "",
                     highlighted: i == 0,
                     isLoading: false
@@ -105,56 +117,54 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
             }
             while chips.count < 3 { chips.append(.empty) }
             kbState.predictions = chips
+            translateMissingChips(partial: partial)
             return
         }
 
         // Fallback: just the live word chip (no completions, not a typo).
-        setTranslationLayout(partial: partial, completions: [])
-    }
-
-    private func setTranslationLayout(partial: String, completions: [Prediction]) {
-        let localHit = predictionEngine.translation(for: partial) ?? ""
         let chip0 = Prediction(
             source: partial,
-            translation: localHit,
+            translation: predictionEngine.translation(for: partial) ?? "",
             highlighted: true,
-            isLoading: localHit.isEmpty
+            isLoading: false
         )
-        var combined: [Prediction] = [chip0]
-        combined.append(contentsOf: completions.filter { !$0.source.isEmpty }.prefix(2))
-        while combined.count < 3 { combined.append(.empty) }
-        kbState.predictions = combined
-
-        if localHit.isEmpty {
-            startLiveTranslate(for: partial)
-        } else {
-            liveTranslateTask?.cancel()
-        }
+        kbState.predictions = [chip0, .empty, .empty]
+        translateMissingChips(partial: partial)
     }
 
-    private func startLiveTranslate(for partial: String) {
+    /// Debounced on-device translation for every visible chip that has no local
+    /// translation yet (the typed word and the suggestion/completion chips).
+    /// Stays on-device (no network) so live typing never spams the web API.
+    private func translateMissingChips(partial: String) {
         liveTranslateTask?.cancel()
+        let pending: [(Int, String)] = kbState.predictions.enumerated().compactMap { index, chip in
+            (!chip.source.isEmpty && chip.translation.isEmpty) ? (index, chip.source) : nil
+        }
+        guard !pending.isEmpty else { return }
         let from = currentNativeLanguage()
         let to = currentTargetLanguage()
         liveTranslateTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: 250_000_000)
             if Task.isCancelled { return }
-            // Live lookups stay on-device (local dict + Apple); no network on fragments.
-            let result = await TranslationService.shared.translate(word: partial, from: from, to: to, allowRemote: false)
-            if Task.isCancelled { return }
-            await MainActor.run { [weak self] in
-                guard let self else { return }
-                guard self.kbState.currentPartial == partial,
-                      !self.kbState.predictions.isEmpty,
-                      self.kbState.predictions[0].source == partial else { return }
+            for (index, word) in pending {
+                let result = await TranslationService.shared.translate(word: word, from: from, to: to, allowRemote: false)
+                if Task.isCancelled { return }
                 let clean = (result == "—") ? "" : result
-                guard !clean.isEmpty else { return }
-                self.kbState.predictions[0] = Prediction(
-                    source: partial,
-                    translation: clean,
-                    highlighted: self.kbState.predictions[0].highlighted,
-                    isLoading: false
-                )
+                guard !clean.isEmpty else { continue }
+                await MainActor.run { [weak self] in
+                    guard let self else { return }
+                    guard self.kbState.currentPartial == partial,
+                          self.kbState.predictions.indices.contains(index),
+                          self.kbState.predictions[index].source == word,
+                          self.kbState.predictions[index].translation.isEmpty else { return }
+                    let c = self.kbState.predictions[index]
+                    self.kbState.predictions[index] = Prediction(
+                        source: c.source,
+                        translation: clean,
+                        highlighted: c.highlighted,
+                        isLoading: false
+                    )
+                }
             }
         }
     }
@@ -215,7 +225,7 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
             source: finalWord,
             translation: localTranslation,
             highlighted: false,
-            isLoading: localTranslation.isEmpty
+            isLoading: false
         )
         var combined: [Prediction] = [chip0]
         combined.append(contentsOf: freshPredictions(after: finalWord))
@@ -279,31 +289,6 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
         }
     }
 
-    // MARK: - Capitalization
-
-    /// Force the keyboard case back to the autocapitalization-correct value after
-    /// our custom actions, so sentence-start caps are preserved but no stale
-    /// "capitalized" shift lingers. Dispatched async so it runs after KeyboardKit's
-    /// own post-action case handling and therefore wins for the next keystroke.
-    private func resyncKeyboardCase() {
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            let before = self.keyboardContext.textDocumentProxy.documentContextBeforeInput ?? ""
-            let atSentenceStart: Bool
-            if before.isEmpty || before.hasSuffix("\n") {
-                atSentenceStart = true
-            } else if before.hasSuffix(" ") {
-                let lastNonSpace = before.reversed().first(where: { $0 != " " })
-                atSentenceStart = lastNonSpace.map { ".!?".contains($0) } ?? true
-            } else {
-                atSentenceStart = false
-            }
-            // .uppercased = shift engaged for the next letter; resync after every
-            // keystroke means it releases to .lowercased once past the sentence start.
-            self.keyboardContext.keyboardCase = atSentenceStart ? .uppercased : .lowercased
-        }
-    }
-
     // MARK: - Haptics
 
     private func triggerHaptic() {
@@ -314,7 +299,8 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
     // MARK: - Helpers
 
     /// The run of letters immediately before the cursor (the word being edited),
-    /// derived from the live document rather than accumulated keystrokes.
+    /// derived from the live document rather than accumulated keystrokes. Case is
+    /// preserved so the bar matches the text field.
     private func partialBeforeCursor() -> String {
         let before = keyboardContext.textDocumentProxy.documentContextBeforeInput ?? ""
         guard let last = before.last, last.isLetter else { return "" }
@@ -322,7 +308,15 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
         for ch in before.reversed() {
             if ch.isLetter { chars.append(ch) } else { break }
         }
-        return String(chars.reversed()).lowercased()
+        return String(chars.reversed())
+    }
+
+    /// Capitalize `word`'s first letter when the typed word is capitalized, so
+    /// suggestion/completion chips visually match what's being typed.
+    private func matchedCase(_ word: String, like typed: String) -> String {
+        guard let t = typed.first, t.isUppercase,
+              let w = word.first, w.isLowercase else { return word }
+        return w.uppercased() + word.dropFirst()
     }
 
     private func lastContextWord() -> String {
