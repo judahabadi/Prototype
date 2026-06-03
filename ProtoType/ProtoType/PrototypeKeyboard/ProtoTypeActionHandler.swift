@@ -48,9 +48,11 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
                         typed = shouldUpper ? char.uppercased() : char.lowercased()
                         proxy.insertText(typed)
                     }
-                    // Preserve the typed case so the bar matches the text field;
-                    // all dictionary lookups lowercase internally.
-                    self.kbState.currentPartial.append(typed)
+                    // Re-derive the current word from the live document (rather than
+                    // appending) so it always reflects the actual cursor position —
+                    // e.g. after the cursor was moved into a previously typed word.
+                    // The document already holds the correctly-cased text.
+                    self.kbState.currentPartial = self.partialBeforeCursor()
                     self.updateLivePredictions()
                 } else {
                     self.applySmartPunctuation(for: char)
@@ -111,6 +113,21 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
             proxy.deleteBackward()
             before.removeLast()
         }
+    }
+
+    // MARK: - Cursor moves
+
+    /// Re-sync the current word and predictions to the live cursor position.
+    /// Called when the cursor moves without typing (e.g. tapping into an earlier
+    /// word) so the suggestion bar reflects the word at the cursor instead of
+    /// staying on the previously typed word. No-op when the word hasn't changed,
+    /// so it stays cheap during ordinary typing (which moves the cursor too).
+    func syncToCursor() {
+        guard kbState != nil else { return }
+        let derived = partialBeforeCursor()
+        guard derived != kbState.currentPartial else { return }
+        kbState.currentPartial = derived
+        updateLivePredictions()
     }
 
     // MARK: - Live (pre-space) predictions + translation
