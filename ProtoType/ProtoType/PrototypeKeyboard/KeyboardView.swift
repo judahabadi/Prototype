@@ -9,8 +9,12 @@ struct ProtoTypeKeyboardView: View {
     let predictionEngine: PredictionEngine
     let kkServices: Keyboard.Services
 
-    @State private var pasteAvailable: Bool = false
     @State private var translationConfig: TranslationSession.Configuration?
+
+    // Selection auto-translate (Feature 2)
+    @State private var lastHandledSelection: String = ""
+    @State private var selectionTranslation: String = ""
+    @State private var selectionTranslating: Bool = false
 
     private var isRTL: Bool {
         state.nativeLanguage.isRTL || state.targetLanguage.isRTL
@@ -63,23 +67,14 @@ struct ProtoTypeKeyboardView: View {
             LanguagePickerView(state: state, predictionEngine: predictionEngine)
         }
         .onAppear {
-            refreshPasteAvailable()
             updateTranslationConfig()
         }
-        .onChange(of: state.contextSignal) { refreshPasteAvailable() }
+        .onChange(of: state.contextSignal) { handleSelectionChange() }
         .onChange(of: state.nativeLanguage) { updateTranslationConfig() }
         .onChange(of: state.targetLanguage) { updateTranslationConfig() }
         .translationTask(translationConfig) { session in
             TranslationService.shared.setSession(session)
         }
-    }
-
-    private func refreshPasteAvailable() {
-        guard proxy?.hasFullAccess == true else {
-            pasteAvailable = false
-            return
-        }
-        pasteAvailable = UIPasteboard.general.hasStrings
     }
 
     private func updateTranslationConfig() {
@@ -115,16 +110,7 @@ struct ProtoTypeKeyboardView: View {
                 .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
         } else {
             HStack(spacing: 0) {
-                let showPaste = pasteAvailable && state.currentPartial.isEmpty
-                if showPaste {
-                    pasteChip
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    Rectangle()
-                        .fill(Color(uiColor: .separator))
-                        .frame(width: 0.33, height: 20)
-                }
-                let chipCount = showPaste ? 2 : 3
-                ForEach(0..<chipCount, id: \.self) { idx in
+                ForEach(0..<3, id: \.self) { idx in
                     let p = idx < state.predictions.count ? state.predictions[idx] : .empty
                     chipContent(p)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
@@ -137,7 +123,7 @@ struct ProtoTypeKeyboardView: View {
                             guard !p.source.isEmpty, !p.translation.isEmpty else { return }
                             pickPrediction(p, useTranslation: true)
                         }
-                    if idx < chipCount - 1 {
+                    if idx < 2 {
                         Rectangle()
                             .fill(Color(uiColor: .separator))
                             .frame(width: 0.33, height: 20)
@@ -148,68 +134,90 @@ struct ProtoTypeKeyboardView: View {
         }
     }
 
-    private var pasteChip: some View {
-        HStack(spacing: 5) {
-            Image(systemName: "doc.on.clipboard")
-                .font(.system(size: 13, weight: .medium))
-            Text("Paste")
-                .font(.system(size: 16, weight: .semibold))
-        }
-        .foregroundStyle(Color.blue)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            performPaste()
-        }
-    }
+    // MARK: - Selection auto-translate (Feature 2)
 
-    private func performPaste() {
-        guard proxy?.hasFullAccess == true,
-              let s = UIPasteboard.general.string, !s.isEmpty else {
-            pasteAvailable = false
+    /// Called whenever the document/selection changes (via `contextSignal`).
+    /// Auto-translates a fresh selection; resets when the selection clears.
+    private func handleSelectionChange() {
+        let selection = proxy?.selectedText ?? ""
+        if selection.isEmpty {
+            lastHandledSelection = ""
+            selectionTranslation = ""
+            selectionTranslating = false
             return
         }
-        proxy?.insertText(s)
-        proxy?.playInputClick()
-        state.currentPartial = ""
-        pasteAvailable = false
-        state.predictions = predictionEngine.nextWords(after: lastContextWord())
+        guard selection != lastHandledSelection else { return }
+        lastHandledSelection = selection
+        requestSelectionTranslation(selection)
+    }
+
+    private func requestSelectionTranslation(_ selection: String) {
+        let trimmed = selection.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            selectionTranslation = ""
+            selectionTranslating = false
+            return
+        }
+        if let local = predictionEngine.translation(for: trimmed.lowercased()), !local.isEmpty {
+            selectionTranslation = local
+            selectionTranslating = false
+            return
+        }
+        selectionTranslation = ""
+        selectionTranslating = true
+        let from = state.nativeLanguage
+        let to = state.targetLanguage
+        Task {
+            let result = await TranslationService.shared.translate(word: trimmed, from: from, to: to)
+            await MainActor.run {
+                // Stale-guard: only apply if this selection is still active.
+                guard (proxy?.selectedText ?? "") == selection else { return }
+                selectionTranslating = false
+                selectionTranslation = (result == "—") ? "" : result
+            }
+        }
     }
 
     private func selectionTranslateChip(selection: String) -> some View {
         HStack(spacing: 6) {
-            Image(systemName: "character.bubble")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(Color.blue)
-            Text("Translate \"\(selection)\"")
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundStyle(Color.blue)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
+            if selectionTranslating {
+                Text("Translating \"\(selection)\"…")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color.blue)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                ProgressView().scaleEffect(0.7)
+            } else if !selectionTranslation.isEmpty {
+                Image(systemName: "character.bubble")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Color.blue)
+                Text("\(selection) → \(selectionTranslation)")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color.blue)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            } else {
+                Text(selection)
+                    .font(.system(size: 16, weight: .regular))
+                    .foregroundStyle(Color(uiColor: .label))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
-        .onTapGesture { translateSelection(selection) }
+        .onTapGesture { replaceSelectionWithTranslation() }
     }
 
-    private func translateSelection(_ selection: String) {
-        let trimmed = selection.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        let local = predictionEngine.translation(for: trimmed.lowercased())
-        if let local, !local.isEmpty {
-            proxy?.insertText(local)
-            proxy?.playInputClick()
-            return
-        }
-        let from = state.nativeLanguage
-        let to = state.targetLanguage
-        Task { [weak proxy] in
-            let result = await TranslationService.shared.translate(word: trimmed, from: from, to: to)
-            await MainActor.run {
-                guard result != "—", !result.isEmpty else { return }
-                proxy?.insertText(result)
-                proxy?.playInputClick()
-            }
-        }
+    /// Tapping the chip replaces the selection with its translation (Apple-style,
+    /// deliberate). Not tapping leaves the original selection untouched.
+    private func replaceSelectionWithTranslation() {
+        guard !selectionTranslation.isEmpty else { return }
+        proxy?.insertText(selectionTranslation)
+        proxy?.playInputClick()
+        lastHandledSelection = ""
+        selectionTranslation = ""
+        selectionTranslating = false
     }
 
     @ViewBuilder
@@ -251,6 +259,14 @@ struct ProtoTypeKeyboardView: View {
     private func pickPrediction(_ p: Prediction, useTranslation: Bool) {
         let raw = useTranslation ? p.translation : p.source
         guard !raw.isEmpty else { return }
+        // If the user kept their own spelling by tapping the literal chip in
+        // spelling-takeover mode (un-highlighted chip whose word == the typed
+        // word), learn it so it isn't flagged as a typo again (Feature 7).
+        if !useTranslation, !p.highlighted,
+           !state.currentPartial.isEmpty,
+           p.source.lowercased() == state.currentPartial.lowercased() {
+            AutocorrectService.learn(p.source)
+        }
         let n = state.currentPartial.count
         for _ in 0..<n { proxy?.deleteBackward() }
         proxy?.insertText(raw)

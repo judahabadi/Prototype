@@ -52,7 +52,24 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         reloadLexicon()
+        syncKeyboardType()
         kbState?.contextSignal += 1
+    }
+
+    /// Adapt the layout to numeric field types so number/decimal/phone fields get
+    /// the numeric keyboard. Non-numeric types are left to KeyboardKit. Done on
+    /// appear only (not per-keystroke) so it never fights the symbols/numbers plane.
+    private func syncKeyboardType() {
+        switch textDocumentProxy.keyboardType {
+        case .numberPad?, .asciiCapableNumberPad?:
+            state.keyboardContext.keyboardType = .numberPad
+        case .decimalPad?:
+            state.keyboardContext.keyboardType = .decimalPad
+        case .phonePad?:
+            state.keyboardContext.keyboardType = .phonePad
+        default:
+            break
+        }
     }
 
     private func reloadLexicon() {
@@ -67,6 +84,11 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
 
     override func textDidChange(_ textInput: UITextInput?) {
         super.textDidChange(textInput)
+        kbState?.contextSignal += 1
+    }
+
+    override func selectionDidChange(_ textInput: UITextInput?) {
+        super.selectionDidChange(textInput)
         kbState?.contextSignal += 1
     }
 

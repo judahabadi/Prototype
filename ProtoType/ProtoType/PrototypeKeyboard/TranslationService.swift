@@ -17,7 +17,7 @@ final class TranslationService {
         wordCache.removeAll()
     }
 
-    func translate(word: String, from: Language, to: Language) async -> String {
+    func translate(word: String, from: Language, to: Language, allowRemote: Bool = true) async -> String {
         let trimmed = word.lowercased()
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: .punctuationCharacters)
@@ -40,8 +40,10 @@ final class TranslationService {
             return result
         }
 
-        // Fallback for language pairs unsupported by Apple Translation (e.g. Bengali, Hebrew)
-        if let remote = await fetchMyMemory(word: trimmed, from: from, to: to) {
+        // Fallback for language pairs unsupported by Apple Translation (e.g. Bengali, Hebrew).
+        // Skipped for live (pre-space) lookups so we never hit the network on incomplete words.
+        if allowRemote,
+           let remote = await fetchMyMemory(word: trimmed, from: from, to: to) {
             wordCache[trimmed] = remote
             return remote
         }

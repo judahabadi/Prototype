@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import NaturalLanguage
 
 struct Prediction: Hashable {
     var source: String
@@ -16,6 +17,7 @@ final class PredictionEngine {
     private var loadedPairKey: String = ""
     private var loadedNgramLang: String = ""
     private let checker = UITextChecker()
+    private lazy var lemmaTagger = NLTagger(tagSchemes: [.lemma])
 
     private var nativeIsoCode: String = "en"
 
@@ -48,7 +50,24 @@ final class PredictionEngine {
     }
 
     func translation(for word: String) -> String? {
-        dict[word.lowercased()]
+        let key = word.lowercased()
+        if let hit = dict[key] { return hit }
+        // Fallback: try the word's base form so inflected words ("running",
+        // "gatos") still hit the base-form dictionary ("run", "gato").
+        if let lemma = lemma(of: key), lemma != key, let hit = dict[lemma] {
+            return hit
+        }
+        return nil
+    }
+
+    private func lemma(of word: String) -> String? {
+        guard !word.isEmpty else { return nil }
+        lemmaTagger.string = word
+        let range = word.startIndex..<word.endIndex
+        lemmaTagger.setLanguage(NLLanguage(rawValue: nativeIsoCode), range: range)
+        let (tag, _) = lemmaTagger.tag(at: word.startIndex, unit: .word, scheme: .lemma)
+        guard let result = tag?.rawValue.lowercased(), !result.isEmpty else { return nil }
+        return result
     }
 
     // Next-word prediction: call when the user just finished a word
