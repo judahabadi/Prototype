@@ -7,6 +7,7 @@ struct Prediction: Hashable {
     var translation: String
     var highlighted: Bool
     var isLoading: Bool
+    var quoted: Bool = false
 
     static let empty = Prediction(source: "", translation: "", highlighted: false, isLoading: false)
 }

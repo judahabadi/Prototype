@@ -114,6 +114,15 @@ struct ProtoTypeKeyboardView: View {
                 ForEach(0..<count, id: \.self) { idx in
                     let p = idx < state.predictions.count ? state.predictions[idx] : .empty
                     chipContent(p)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background {
+                            // Apple-style rounded "pill" behind the auto-correct default.
+                            if p.highlighted {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color(uiColor: .systemGray4))
+                            }
+                        }
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                         .contentShape(Rectangle())
                         .onTapGesture {
@@ -235,6 +244,12 @@ struct ProtoTypeKeyboardView: View {
         let labelColor = Color(uiColor: .label)
         if p.source.isEmpty {
             Text(" ")
+        } else if p.quoted {
+            // Apple-style literal: the typed word shown in quotes ("keep my spelling").
+            Text("\u{201C}\(p.source)\u{201D}")
+                .font(.system(size: 17, weight: .regular))
+                .foregroundStyle(labelColor)
+                .lineLimit(1).minimumScaleFactor(0.7)
         } else if p.isLoading {
             HStack(spacing: 4) {
                 Text(p.source)

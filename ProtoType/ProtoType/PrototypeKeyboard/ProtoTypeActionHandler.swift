@@ -81,50 +81,22 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
             return
         }
 
-        // Completions excluding the typed word itself (UITextChecker returns the
-        // word as its own first completion, which would duplicate the live chip).
-        let completions = predictionEngine.predictions(for: partial)
-            .filter { !$0.source.isEmpty && $0.source.lowercased() != partial.lowercased() }
-
-        if !completions.isEmpty {
-            let chip0 = Prediction(
-                source: partial,
-                translation: predictionEngine.translation(for: partial) ?? "",
-                highlighted: true,
-                isLoading: false
-            )
-            var combined: [Prediction] = [chip0]
-            combined.append(contentsOf: completions.prefix(2).map {
-                Prediction(source: matchedCase($0.source, like: partial), translation: $0.translation, highlighted: false, isLoading: false)
-            })
-            while combined.count < 3 { combined.append(.empty) }
-            kbState.predictions = combined
-            translateMissingChips(partial: partial)
-            return
-        }
-
-        // No completion: the partial may be a genuine typo -> spelling-takeover layout.
+        // Apple QuickType: if the word being typed is misspelled, show the literal
+        // in quotes + the auto-correct default (pill-highlighted) + an alternative.
         let lexicon = Set(getLexicon().keys)
-        let guesses = AutocorrectService.suggestions(
-            word: partial,
-            language: currentNativeLanguage(),
-            limit: 2,
-            lexicon: lexicon
-        )
+        let guesses = partial.count >= 2
+            ? AutocorrectService.suggestions(word: partial, language: currentNativeLanguage(), limit: 2, lexicon: lexicon)
+            : []
         if !guesses.isEmpty {
             var chips: [Prediction] = [
-                Prediction(
-                    source: partial,
-                    translation: predictionEngine.translation(for: partial) ?? "",
-                    highlighted: false,
-                    isLoading: false
-                )
+                // The literal typed word, shown in quotes (tap = keep my spelling).
+                Prediction(source: partial, translation: "", highlighted: false, isLoading: false, quoted: true)
             ]
             for (i, guess) in guesses.enumerated() {
                 chips.append(Prediction(
                     source: matchedCase(guess, like: partial),
                     translation: predictionEngine.translation(for: guess) ?? "",
-                    highlighted: i == 0,
+                    highlighted: i == 0,   // top correction gets the pill
                     isLoading: false
                 ))
             }
@@ -134,14 +106,24 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
             return
         }
 
-        // Fallback: just the live word chip (no completions, not a typo).
+        // Not misspelled: live word + translation, plus completions. Completions
+        // exclude the typed word itself (UITextChecker returns it as its own first
+        // completion, which would duplicate the live chip).
+        let completions = predictionEngine.predictions(for: partial)
+            .filter { !$0.source.isEmpty && $0.source.lowercased() != partial.lowercased() }
+
         let chip0 = Prediction(
             source: partial,
             translation: predictionEngine.translation(for: partial) ?? "",
-            highlighted: true,
+            highlighted: false,
             isLoading: false
         )
-        kbState.predictions = [chip0, .empty, .empty]
+        var combined: [Prediction] = [chip0]
+        combined.append(contentsOf: completions.prefix(2).map {
+            Prediction(source: matchedCase($0.source, like: partial), translation: $0.translation, highlighted: false, isLoading: false)
+        })
+        while combined.count < 3 { combined.append(.empty) }
+        kbState.predictions = combined
         translateMissingChips(partial: partial)
     }
 
