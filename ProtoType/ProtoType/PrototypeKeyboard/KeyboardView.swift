@@ -8,6 +8,7 @@ struct ProtoTypeKeyboardView: View {
     weak var proxy: (any KeyboardProxy)?
     let predictionEngine: PredictionEngine
     let kkServices: Keyboard.Services
+    let keyboardContext: KeyboardContext
 
     @State private var translationConfig: TranslationSession.Configuration?
 
@@ -62,6 +63,11 @@ struct ProtoTypeKeyboardView: View {
                 }
             }
         )
+        .keyboardCalloutActions { action in
+            // Long-press accent popups (é, ñ, ü, ç…) for Latin-script languages,
+            // falling back to KeyboardKit's standard callouts for everything else.
+            AccentCallouts.actions(for: action, context: keyboardContext)
+        }
         .preferredColorScheme(preferredScheme)
         .sheet(isPresented: $state.showLanguagePicker) {
             LanguagePickerView(state: state, predictionEngine: predictionEngine)
@@ -302,5 +308,38 @@ struct ProtoTypeKeyboardView: View {
         proxy?.playInputClick()
         state.currentPartial = ""
         state.predictions = predictionEngine.nextWords(after: lastContextWord())
+    }
+}
+
+/// Long-press accent/diacritic callouts for letter keys. Covers the Latin-script
+/// target languages (Spanish, French, German, Portuguese, etc.); other keys and
+/// non-Latin scripts fall back to KeyboardKit's standard callout actions.
+enum AccentCallouts {
+
+    /// Base lowercase letter → the characters shown in its long-press callout.
+    /// The base letter is listed first so it stays the default on a quick tap.
+    private static let variants: [Character: String] = [
+        "a": "aàáâäæãåā",
+        "c": "cçćč",
+        "e": "eèéêëēėę",
+        "i": "iîïíīįì",
+        "l": "lł",
+        "n": "nñń",
+        "o": "oôöòóœøōõ",
+        "s": "sßśš",
+        "u": "uûüùúū",
+        "y": "yÿý",
+        "z": "zžźż",
+        "g": "gğ"
+    ]
+
+    static func actions(for action: KeyboardAction, context: KeyboardContext) -> KeyboardCallout.Actions {
+        if case let .character(char) = action,
+           char.count == 1, let c = char.first,
+           let base = variants[Character(c.lowercased())] {
+            // Match the callout's case to the key's current case.
+            return .init(characters: c.isUppercase ? base.uppercased() : base)
+        }
+        return .standardCalloutActions(for: action, context: context)
     }
 }

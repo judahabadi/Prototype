@@ -20,6 +20,8 @@
 - **Secure entry / one-time code** — when `isSecureTextEntry == true` or `textContentType == .oneTimeCode`, predictions are hidden and autocorrect/lexicon expansion are skipped.
 - **Return key auto-dim** — when the host requests `enablesReturnKeyAutomatically`, the return key is dimmed and non-interactive until text is present.
 - **Space-bar cursor slide** — dragging horizontally on the space bar moves the cursor left/right via `adjustTextPosition(byCharacterOffset:)`.
+- **Long-press accents** — holding a letter key shows a callout of its diacritic variants (é, ñ, ü, ç…) for Latin-script languages, via `AccentCallouts` wired through KeyboardKit's `.keyboardCalloutActions` modifier. Non-mapped keys fall back to KeyboardKit's standard callouts.
+- **Accelerated delete** — holding backspace deletes character-by-character, then escalates to whole-word deletion after a sustained hold (`backspaceRepeats` counter in `ProtoTypeActionHandler`).
 - **Selected text translation** — when text is selected, the prediction bar collapses to a single full-width chip showing the translation of the selection; tapping replaces the selection with the translation.
 - **Globe long-press** — tap advances to next keyboard; long-press shows the native iOS input-mode popup.
 
@@ -38,8 +40,7 @@
 
 | Feature | Reason |
 |---|---|
-| Swipe-to-type (glide) | Complex; not in scope |
-| Long-press alternate characters (é, ñ, ü) | Not in scope |
+| Swipe-to-type (glide) | Complex; not in scope (not in free KeyboardKit) |
 | Custom themes / color picker | Not in scope |
 | In-app haptic toggle | Can add later behind an App Group bool |
 | Dictation button | Needs Open Access; architecture ready, UI not built |
