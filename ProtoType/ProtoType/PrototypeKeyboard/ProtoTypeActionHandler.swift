@@ -10,6 +10,10 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
     private var liveTranslateTask: Task<Void, Never>?
     private lazy var haptics = UIImpactFeedbackGenerator(style: .light)
 
+    /// Counts backspace repeat ticks while the key is held, so a long hold can
+    /// escalate from character deletion to whole-word deletion (Apple-style).
+    private var backspaceRepeats = 0
+
     override func action(
         for gesture: Keyboard.Gesture,
         on action: KeyboardAction
@@ -55,10 +59,34 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
                 }
             }
 
+        case (.press, .backspace):
+            // Reset the hold counter at the start of every backspace press so the
+            // word-deletion escalation only kicks in on a sustained hold.
+            return { [weak self] controller in
+                self?.backspaceRepeats = 0
+                standard?(controller)
+            }
+
+        case (.repeatPress, .backspace):
+            // While held, delete characters; after a sustained hold, escalate to
+            // deleting a whole word per tick (Apple-style accelerated delete).
+            return { [weak self] controller in
+                guard let self else { standard?(controller); return }
+                self.backspaceRepeats += 1
+                if self.backspaceRepeats >= 10 {
+                    self.deleteWordBackward()
+                } else {
+                    standard?(controller)
+                }
+                self.kbState.currentPartial = self.partialBeforeCursor()
+                self.updateLivePredictions()
+            }
+
         case (.release, .backspace):
             return { [weak self] controller in
                 standard?(controller)
                 guard let self else { return }
+                self.backspaceRepeats = 0
                 self.triggerHaptic()
                 // Re-derive the current word from the live document so editing back
                 // into a previously finished word treats the whole word as current.
@@ -68,6 +96,20 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
 
         default:
             return standard
+        }
+    }
+
+    /// Delete the whitespace and word immediately before the cursor in one step.
+    private func deleteWordBackward() {
+        let proxy = keyboardContext.textDocumentProxy
+        guard var before = proxy.documentContextBeforeInput, !before.isEmpty else { return }
+        while let last = before.last, last == " " {
+            proxy.deleteBackward()
+            before.removeLast()
+        }
+        while let last = before.last, !last.isWhitespace {
+            proxy.deleteBackward()
+            before.removeLast()
         }
     }
 

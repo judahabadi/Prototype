@@ -62,6 +62,17 @@ struct ProtoTypeKeyboardView: View {
                 }
             }
         )
+        .keyboardCalloutActions { params in
+            // Long-press accent popups (é, ñ, ü, ç…) for Latin-script languages,
+            // falling back to KeyboardKit's standard callouts for everything else.
+            if case let .character(char) = params.action,
+               char.count == 1, let c = char.first,
+               let base = AccentCallouts.variants[Character(c.lowercased())] {
+                let chars = c.isUppercase ? base.uppercased() : base
+                return chars.map { KeyboardAction.character(String($0)) }
+            }
+            return params.standardActions()
+        }
         .preferredColorScheme(preferredScheme)
         .sheet(isPresented: $state.showLanguagePicker) {
             LanguagePickerView(state: state, predictionEngine: predictionEngine)
@@ -303,4 +314,27 @@ struct ProtoTypeKeyboardView: View {
         state.currentPartial = ""
         state.predictions = predictionEngine.nextWords(after: lastContextWord())
     }
+}
+
+/// Long-press accent/diacritic callout data for letter keys. Covers the
+/// Latin-script target languages (Spanish, French, German, Portuguese, etc.);
+/// other keys and non-Latin scripts fall back to KeyboardKit's standard callouts.
+enum AccentCallouts {
+
+    /// Base lowercase letter → the characters shown in its long-press callout.
+    /// The base letter is listed first so it stays the default on a quick tap.
+    static let variants: [Character: String] = [
+        "a": "aàáâäæãåā",
+        "c": "cçćč",
+        "e": "eèéêëēėę",
+        "i": "iîïíīįì",
+        "l": "lł",
+        "n": "nñń",
+        "o": "oôöòóœøōõ",
+        "s": "sßśš",
+        "u": "uûüùúū",
+        "y": "yÿý",
+        "z": "zžźż",
+        "g": "gğ"
+    ]
 }
