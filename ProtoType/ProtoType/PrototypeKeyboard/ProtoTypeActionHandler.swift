@@ -26,14 +26,27 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
 
         case (.release, .character(let char)):
             return { [weak self] controller in
+                guard let self else { standard?(controller); return }
+                let proxy = self.keyboardContext.textDocumentProxy
+                // Capture context BEFORE the character is inserted so we can decide
+                // the correct case ourselves.
+                let contextBefore = proxy.documentContextBeforeInput ?? ""
                 standard?(controller)
-                guard let self else { return }
                 self.triggerHaptic()
                 let isLetter = char.count == 1 && (char.first?.isLetter ?? false)
-                if isLetter {
+                if isLetter, let first = char.first {
+                    // Enforce auto-capitalization deterministically: fix the just-typed
+                    // letter's case if KeyboardKit's shift state produced the wrong one.
+                    let shouldUpper = self.shouldCapitalize(contextBefore: contextBefore)
+                    var typed = char
+                    if shouldUpper != first.isUppercase {
+                        proxy.deleteBackward()
+                        typed = shouldUpper ? char.uppercased() : char.lowercased()
+                        proxy.insertText(typed)
+                    }
                     // Preserve the typed case so the bar matches the text field;
                     // all dictionary lookups lowercase internally.
-                    self.kbState.currentPartial.append(char)
+                    self.kbState.currentPartial.append(typed)
                     self.updateLivePredictions()
                 } else {
                     self.applySmartPunctuation(for: char)
@@ -309,6 +322,29 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
             if ch.isLetter { chars.append(ch) } else { break }
         }
         return String(chars.reversed())
+    }
+
+    /// Whether the letter just typed should be uppercase, per the field's
+    /// autocapitalization type and the text before it. Deterministic and
+    /// independent of KeyboardKit's shift state.
+    private func shouldCapitalize(contextBefore: String) -> Bool {
+        switch keyboardContext.textDocumentProxy.autocapitalizationType ?? .sentences {
+        case .allCharacters:
+            return true
+        case .none:
+            return false
+        case .words:
+            return contextBefore.isEmpty || (contextBefore.last?.isWhitespace ?? false)
+        case .sentences:
+            if contextBefore.isEmpty || contextBefore.hasSuffix("\n") { return true }
+            if contextBefore.hasSuffix(" ") {
+                let lastNonSpace = contextBefore.reversed().first(where: { $0 != " " })
+                return lastNonSpace.map { ".!?".contains($0) } ?? true
+            }
+            return false
+        @unknown default:
+            return false
+        }
     }
 
     /// Capitalize `word`'s first letter when the typed word is capitalized, so
