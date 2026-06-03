@@ -61,12 +61,8 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
     /// appear only (not per-keystroke) so it never fights the symbols/numbers plane.
     private func syncKeyboardType() {
         switch textDocumentProxy.keyboardType {
-        case .numberPad?, .asciiCapableNumberPad?:
+        case .numberPad?, .asciiCapableNumberPad?, .decimalPad?, .phonePad?:
             state.keyboardContext.keyboardType = .numberPad
-        case .decimalPad?:
-            state.keyboardContext.keyboardType = .decimalPad
-        case .phonePad?:
-            state.keyboardContext.keyboardType = .phonePad
         default:
             break
         }

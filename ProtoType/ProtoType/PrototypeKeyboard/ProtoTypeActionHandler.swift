@@ -288,7 +288,6 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
     private func resyncKeyboardCase() {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            guard self.keyboardContext.keyboardCase != .uppercased else { return }
             let before = self.keyboardContext.textDocumentProxy.documentContextBeforeInput ?? ""
             let atSentenceStart: Bool
             if before.isEmpty || before.hasSuffix("\n") {
@@ -299,7 +298,9 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
             } else {
                 atSentenceStart = false
             }
-            self.keyboardContext.keyboardCase = atSentenceStart ? .capitalized : .lowercased
+            // .uppercased = shift engaged for the next letter; resync after every
+            // keystroke means it releases to .lowercased once past the sentence start.
+            self.keyboardContext.keyboardCase = atSentenceStart ? .uppercased : .lowercased
         }
     }
 

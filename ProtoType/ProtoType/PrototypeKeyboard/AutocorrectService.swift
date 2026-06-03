@@ -44,6 +44,6 @@ struct AutocorrectService {
     static func learn(_ word: String) {
         let w = word.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !w.isEmpty else { return }
-        checker.learnWord(w)
+        UITextChecker.learnWord(w)
     }
 }
