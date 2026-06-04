@@ -31,10 +31,6 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
         super.viewDidLoad()
 
         state.keyboardContext.locale = Locale(identifier: native.isoCode)
-        // Turn off KeyboardKit's own auto-capitalization so it can't fight (and
-        // re-capitalize mid-sentence words behind) our `resyncKeyboardCase`, which
-        // is the single source of truth for the shift state.
-        state.keyboardContext.settings.isAutocapitalizationEnabled = false
 
         let handler = ProtoTypeActionHandler(controller: self)
         handler.kbState = kbState
@@ -61,10 +57,6 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
         super.viewWillAppear(animated)
         reloadLexicon()
         syncKeyboardType()
-        // Re-assert our settings/case when returning to this keyboard (e.g. after
-        // switching keyboards) so behaviour is consistent on every appearance.
-        state.keyboardContext.settings.isAutocapitalizationEnabled = false
-        resyncKeyboardCase()
         kbState?.contextSignal += 1
     }
 
@@ -93,31 +85,14 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
     override func textDidChange(_ textInput: UITextInput?) {
         super.textDidChange(textInput)
         kbState?.contextSignal += 1
-        resyncKeyboardCase()
-        // Re-apply on the next runloop so our case wins even after KeyboardKit's
-        // own (sometimes async) auto-capitalization pass — otherwise some words
-        // mid-sentence come back capitalized.
-        DispatchQueue.main.async { [weak self] in self?.resyncKeyboardCase() }
-    }
-
-    /// Authoritative auto-capitalization: runs after KeyboardKit's own case sync
-    /// (super.textDidChange) so it wins, honoring the field's autocapitalization
-    /// type. This is the single source of truth for the shift state — the action
-    /// handler no longer rewrites typed letters, it just trusts this case.
-    private func resyncKeyboardCase() {
-        let before = textDocumentProxy.documentContextBeforeInput ?? ""
-        let type = textDocumentProxy.autocapitalizationType ?? .sentences
-        state.keyboardContext.keyboardCase = Autocap.shouldUppercase(contextBefore: before, type: type)
-            ? .uppercased : .lowercased
     }
 
     override func selectionDidChange(_ textInput: UITextInput?) {
         super.selectionDidChange(textInput)
         kbState?.contextSignal += 1
-        // When the cursor moves (not just on text change), re-evaluate the shift
-        // state and the current word for the new position, so editing an earlier
-        // word factors in where the cursor actually is — like Apple's keyboard.
-        resyncKeyboardCase()
+        // When the cursor moves, re-sync the current word for the new position so
+        // the suggestion bar reflects where the cursor actually is. Case is left
+        // to KeyboardKit's own auto-capitalization.
         protoHandler?.syncToCursor()
     }
 
