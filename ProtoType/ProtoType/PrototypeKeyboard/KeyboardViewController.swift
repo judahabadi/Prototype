@@ -31,6 +31,10 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
         super.viewDidLoad()
 
         state.keyboardContext.locale = Locale(identifier: native.isoCode)
+        // Turn off KeyboardKit's own auto-capitalization so it can't fight (and
+        // re-capitalize mid-sentence words behind) our `resyncKeyboardCase`, which
+        // is the single source of truth for the shift state.
+        state.keyboardContext.settings.isAutocapitalizationEnabled = false
 
         let handler = ProtoTypeActionHandler(controller: self)
         handler.kbState = kbState
@@ -57,6 +61,10 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
         super.viewWillAppear(animated)
         reloadLexicon()
         syncKeyboardType()
+        // Re-assert our settings/case when returning to this keyboard (e.g. after
+        // switching keyboards) so behaviour is consistent on every appearance.
+        state.keyboardContext.settings.isAutocapitalizationEnabled = false
+        resyncKeyboardCase()
         kbState?.contextSignal += 1
     }
 

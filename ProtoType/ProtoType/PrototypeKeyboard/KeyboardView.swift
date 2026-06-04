@@ -4,6 +4,10 @@ import Translation
 import KeyboardKit
 
 struct ProtoTypeKeyboardView: View {
+    /// Fixed height of the QuickType bar, tuned to Apple's native bar. Used both
+    /// for the bar frame and each chip's row so content is always centred.
+    static let barHeight: CGFloat = 37
+
     @Bindable var state: KeyboardState
     weak var proxy: (any KeyboardProxy)?
     let predictionEngine: PredictionEngine
@@ -54,7 +58,7 @@ struct ProtoTypeKeyboardView: View {
                 if shouldPredict {
                     VStack(spacing: 0) {
                         predictionBar
-                            .frame(height: 36)
+                            .frame(height: Self.barHeight)
                         Rectangle()
                             .fill(Color(uiColor: .separator))
                             .frame(height: 0.5)
@@ -139,13 +143,13 @@ struct ProtoTypeKeyboardView: View {
                                         .fill(Color(uiColor: .systemGray4))
                                 }
                             }
+                            // Explicit row height keeps content vertically centred
+                            // and stable across keyboard switches (no greedy sizing).
+                            .frame(height: Self.barHeight)
                     }
                     .defaultScrollAnchor(.center)
                     .scrollBounceBehavior(.basedOnSize)
-                    // Hug the content's height, then centre it in the bar so words
-                    // sit vertically centred (not pushed to the bottom).
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                    .frame(maxWidth: .infinity)
                     .contentShape(Rectangle())
                     .onTapGesture {
                             guard !p.source.isEmpty else { return }
@@ -244,11 +248,11 @@ struct ProtoTypeKeyboardView: View {
                     .lineLimit(1)
             }
             .padding(.horizontal, 8)
+            .frame(height: Self.barHeight)
         }
         .defaultScrollAnchor(.leading)
         .scrollBounceBehavior(.basedOnSize)
-        .fixedSize(horizontal: false, vertical: true)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
         .onTapGesture { replaceSelection(with: corrected) }
     }
@@ -280,11 +284,11 @@ struct ProtoTypeKeyboardView: View {
                 }
             }
             .padding(.horizontal, 8)
+            .frame(height: Self.barHeight)
         }
         .defaultScrollAnchor(centered ? .center : .leading)
         .scrollBounceBehavior(.basedOnSize)
-        .fixedSize(horizontal: false, vertical: true)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
         .onTapGesture { replaceSelectionWithTranslation() }
     }
