@@ -98,3 +98,11 @@ User report: some mid-sentence words (the/to/car) still capitalized; bar transla
 User: bar still taller than Apple's and words sit low / not centred. (Apple doesn't publish the exact bar height; KeyboardKit's iOS-26 standardPhone row is 51pt and its autocomplete toolbar is taller still, so neither is a match — tuning by eye against the native bar.)
 - **Vertical centering fix**: prediction chips and selection chips were stretching content with `.frame(maxHeight: .infinity)` inside a horizontal `ScrollView`, which left them sitting low. Now the ScrollView hugs content height via `.fixedSize(horizontal: false, vertical: true)` and is centred in the bar with `.frame(maxHeight: .infinity, alignment: .center)`.
 - **Height 38 → 36 pt**, chip vertical padding 5 → 4. Easily tuned in `KeyboardView.swift` (`predictionBar.frame(height:)`).
+
+### Capitalization root fix + bar height/re-entry (branch `claude/festive-meitner-73xZi`)
+
+User: still seeing The/To/Car capitalized mid-sentence; bar height reverts to the uncentred/too-tall "bug design" after switching keyboards and back; wants 37pt.
+- **Disabled KeyboardKit's own auto-capitalization** (`state.keyboardContext.settings.isAutocapitalizationEnabled = false`) in `viewDidLoad` and re-asserted in `viewWillAppear`. The resync-only-as-last-writer approach kept losing to KeyboardKit's (sometimes async) auto-cap; disabling it makes `resyncKeyboardCase` the sole authority. Intentional capitals still work via shift (shift overrides keyboardCase for one letter).
+- **`viewWillAppear` now re-asserts the setting + `resyncKeyboardCase()`** so behaviour/case is consistent after a keyboard switch.
+- **Bar height → 37pt via `ProtoTypeKeyboardView.barHeight` constant**, used for the bar frame AND each chip's explicit row height. Replaced the fragile `.fixedSize`/`maxHeight:.infinity` centering (which reverted to uncentred/too-tall after keyboard switches) with an explicit per-chip `.frame(height: barHeight)` so chips are reliably centred across re-entry. Applied to prediction chips and selection chips.
+- NOTE: `settings.isAutocapitalizationEnabled` is my best read of the KeyboardKit 10.5 API (search showed `onAutocapitalizationEnabledChanged` on `KeyboardSettings`); CI validates the build. If it fails to compile, the path is wrong — adjust.
