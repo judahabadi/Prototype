@@ -106,3 +106,10 @@ User: still seeing The/To/Car capitalized mid-sentence; bar height reverts to th
 - **`viewWillAppear` now re-asserts the setting + `resyncKeyboardCase()`** so behaviour/case is consistent after a keyboard switch.
 - **Bar height → 37pt via `ProtoTypeKeyboardView.barHeight` constant**, used for the bar frame AND each chip's explicit row height. Replaced the fragile `.fixedSize`/`maxHeight:.infinity` centering (which reverted to uncentred/too-tall after keyboard switches) with an explicit per-chip `.frame(height: barHeight)` so chips are reliably centred across re-entry. Applied to prediction chips and selection chips.
 - NOTE: `settings.isAutocapitalizationEnabled` is my best read of the KeyboardKit 10.5 API (search showed `onAutocapitalizationEnabledChanged` on `KeyboardSettings`); CI validates the build. If it fails to compile, the path is wrong — adjust.
+
+### ROOT CAUSE of "going in circles": TestFlight never got new builds (branch `claude/festive-meitner-73xZi`)
+
+User tests via TestFlight (Xcode Cloud builds on merge to main) and reported every fix had "no effect". Found: `CURRENT_PROJECT_VERSION = 1` is hardcoded for all targets and targets use `GENERATE_INFOPLIST_FILE = YES` (no CFBundleVersion in Info.plist), so CFBundleVersion is always "1". With no `ci_scripts/`, every Xcode Cloud build has the same build number → App Store Connect rejects the duplicate upload → TestFlight keeps serving the first build → device runs stale code. This explains why NONE of the keyboard changes appeared.
+- **Fix**: added `ci_scripts/ci_post_clone.sh` that rewrites every `CURRENT_PROJECT_VERSION` to `$CI_BUILD_NUMBER` (Xcode Cloud's monotonic build number) via `sed` on `project.pbxproj`, so each build is unique and installs as a real update.
+- Verify: user should check TestFlight build number/date (was likely stuck on an old build); and after a fresh build installs, may still need to remove + re-add the keyboard (iOS caches the extension binary).
+- ci_scripts location: placed at repo root (`/ci_scripts`). If Xcode Cloud doesn't run it, it may need to sit next to the .xcodeproj — move to `ProtoType/ProtoType/ci_scripts`.
