@@ -447,24 +447,27 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
         return first.isLowercase ? s : first.lowercased() + s.dropFirst()
     }
 
-    /// Match a translation's leading case to its source chip, so the translation
-    /// half never shows a stray capital mid-sentence (nor stays lowercase where
-    /// the source word is capitalized).
+    /// Case a translation for where it will appear: capitalized at a sentence
+    /// start (where the source word is capitalized) and otherwise left exactly as
+    /// the dictionary provides — so legitimately capitalized nouns (e.g. German)
+    /// keep their capital mid-sentence.
     private func matchTranslationCase(_ translation: String, toSource source: String) -> String {
-        guard let f = source.first(where: { $0.isLetter }) else { return translation }
-        return firstLetterCased(translation, uppercase: f.isUppercase)
+        guard let f = source.first(where: { $0.isLetter }), f.isUppercase else { return translation }
+        return firstLetterCased(translation, uppercase: true)
     }
 
-    /// Case next-word suggestion chips for where they'll be inserted: capitalized
-    /// at a sentence start, lowercase mid-sentence — source and translation alike.
-    /// The quoted "keep my spelling" chip is left untouched.
+    /// Case next-word suggestion chips for where they'll be inserted: the source
+    /// word is capitalized at a sentence start and lowercase mid-sentence, while
+    /// the translation keeps the dictionary's own casing except at a sentence
+    /// start. The quoted "keep my spelling" chip is left untouched.
     private func casedForCursor(_ preds: [Prediction]) -> [Prediction] {
         let upper = shouldCapitalize(contextBefore: keyboardContext.textDocumentProxy.documentContextBeforeInput ?? "")
         return preds.map { p in
             guard !p.source.isEmpty, !p.quoted else { return p }
+            let src = firstLetterCased(p.source, uppercase: upper)
             return Prediction(
-                source: firstLetterCased(p.source, uppercase: upper),
-                translation: p.translation.isEmpty ? "" : firstLetterCased(p.translation, uppercase: upper),
+                source: src,
+                translation: p.translation.isEmpty ? "" : matchTranslationCase(p.translation, toSource: src),
                 highlighted: p.highlighted,
                 isLoading: p.isLoading,
                 quoted: p.quoted
@@ -483,9 +486,10 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
                 let key = e.source.lowercased()
                 guard !e.source.isEmpty, !seen.contains(key) else { continue }
                 seen.insert(key)
+                let src = firstLetterCased(e.source, uppercase: upper)
                 out.append(Prediction(
-                    source: firstLetterCased(e.source, uppercase: upper),
-                    translation: e.translation.isEmpty ? "" : firstLetterCased(e.translation, uppercase: upper),
+                    source: src,
+                    translation: e.translation.isEmpty ? "" : matchTranslationCase(e.translation, toSource: src),
                     highlighted: false,
                     isLoading: false
                 ))
