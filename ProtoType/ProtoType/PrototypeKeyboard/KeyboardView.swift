@@ -54,7 +54,7 @@ struct ProtoTypeKeyboardView: View {
                 if shouldPredict {
                     VStack(spacing: 0) {
                         predictionBar
-                            .frame(height: 38)
+                            .frame(height: 36)
                         Rectangle()
                             .fill(Color(uiColor: .separator))
                             .frame(height: 0.5)
@@ -131,7 +131,7 @@ struct ProtoTypeKeyboardView: View {
                     ScrollView(.horizontal, showsIndicators: false) {
                         chipContent(p)
                             .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
+                            .padding(.vertical, 4)
                             .background {
                                 // Apple-style rounded "pill" behind the auto-correct default.
                                 if p.highlighted {
@@ -139,10 +139,12 @@ struct ProtoTypeKeyboardView: View {
                                         .fill(Color(uiColor: .systemGray4))
                                 }
                             }
-                            .frame(maxHeight: .infinity)
                     }
                     .defaultScrollAnchor(.center)
                     .scrollBounceBehavior(.basedOnSize)
+                    // Hug the content's height, then centre it in the bar so words
+                    // sit vertically centred (not pushed to the bottom).
+                    .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                     .contentShape(Rectangle())
                     .onTapGesture {
@@ -242,11 +244,11 @@ struct ProtoTypeKeyboardView: View {
                     .lineLimit(1)
             }
             .padding(.horizontal, 8)
-            .frame(maxHeight: .infinity)
         }
         .defaultScrollAnchor(.leading)
         .scrollBounceBehavior(.basedOnSize)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         .contentShape(Rectangle())
         .onTapGesture { replaceSelection(with: corrected) }
     }
@@ -278,11 +280,11 @@ struct ProtoTypeKeyboardView: View {
                 }
             }
             .padding(.horizontal, 8)
-            .frame(maxHeight: .infinity)
         }
         .defaultScrollAnchor(centered ? .center : .leading)
         .scrollBounceBehavior(.basedOnSize)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         .contentShape(Rectangle())
         .onTapGesture { replaceSelectionWithTranslation() }
     }

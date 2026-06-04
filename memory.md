@@ -92,3 +92,9 @@ User report: some mid-sentence words (the/to/car) still capitalized; bar transla
 - **Restored the async `resyncKeyboardCase` re-apply** in `textDidChange` (removing it let KeyboardKit's late auto-cap pass win, capitalizing some mid-sentence words). It re-applies our case on the next runloop so we're the last writer.
 - **Autocorrections are now case-matched to the sentence** in `handleSpace` (`firstLetterCased(correction, uppercase: wantUpper)` where `wantUpper` is judged from the text *before* the word) — `UITextChecker` often returns a Capitalized guess (e.g. typo→"Car") that previously capitalized a mid-sentence word.
 - **Machine translations are case-matched to the source** (`machineCased`): the local dictionaries are all lowercase, so any translation fetched at runtime (Apple/MyMemory) is machine output and is sentence-cased; it now follows the source word's case (lowercase mid-sentence). Dictionary-sourced translations still use `matchTranslationCase` (preserve).
+
+### QuickType bar height + vertical centering (branch `claude/festive-meitner-73xZi`)
+
+User: bar still taller than Apple's and words sit low / not centred. (Apple doesn't publish the exact bar height; KeyboardKit's iOS-26 standardPhone row is 51pt and its autocomplete toolbar is taller still, so neither is a match — tuning by eye against the native bar.)
+- **Vertical centering fix**: prediction chips and selection chips were stretching content with `.frame(maxHeight: .infinity)` inside a horizontal `ScrollView`, which left them sitting low. Now the ScrollView hugs content height via `.fixedSize(horizontal: false, vertical: true)` and is centred in the bar with `.frame(maxHeight: .infinity, alignment: .center)`.
+- **Height 38 → 36 pt**, chip vertical padding 5 → 4. Easily tuned in `KeyboardView.swift` (`predictionBar.frame(height:)`).
