@@ -31,38 +31,22 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
         case (.release, .character(let char)):
             return { [weak self] controller in
                 guard let self else { standard?(controller); return }
-                let proxy = self.keyboardContext.textDocumentProxy
-                // Capture context BEFORE the character is inserted so we can decide
-                // the correct case ourselves.
-                let contextBefore = proxy.documentContextBeforeInput ?? ""
+                // KeyboardKit inserts the character using the shift state that
+                // `resyncKeyboardCase` keeps correct, so we no longer rewrite the
+                // letter's case here (that delete+re-insert raced fast typing).
                 standard?(controller)
                 self.triggerHaptic()
                 let isLetter = char.count == 1 && (char.first?.isLetter ?? false)
-                if isLetter, let first = char.first {
-                    // Enforce auto-capitalization deterministically: fix the just-typed
-                    // letter's case if KeyboardKit's shift state produced the wrong one.
-                    let shouldUpper = self.shouldCapitalize(contextBefore: contextBefore)
-                    var typed = char
-                    if shouldUpper != first.isUppercase {
-                        proxy.deleteBackward()
-                        typed = shouldUpper ? char.uppercased() : char.lowercased()
-                        proxy.insertText(typed)
-                    }
-                    // Re-derive the current word from the live document (rather than
-                    // appending) so it always reflects the actual cursor position —
-                    // e.g. after the cursor was moved into a previously typed word.
-                    // The document already holds the correctly-cased text.
+                if isLetter {
+                    // Re-derive the current word from the live document so it always
+                    // reflects the actual cursor position (e.g. after moving the
+                    // cursor into a previously typed word).
                     self.kbState.currentPartial = self.partialBeforeCursor()
                     self.updateLivePredictions()
                 } else {
                     self.applySmartPunctuation(for: char)
                     self.kbState.currentPartial = ""
-                    let upper = self.shouldCapitalize(contextBefore: proxy.documentContextBeforeInput ?? "")
-                    self.kbState.predictions = self.padToThree(
-                        self.casedForCursor(self.predictionEngine.nextWords(after: self.lastContextWord())),
-                        upper: upper
-                    )
-                    self.translateMissingChips(partial: "")
+                    self.refreshNextWordPredictions()
                 }
             }
 
@@ -159,8 +143,7 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
     private func updateLivePredictions() {
         let partial = kbState.currentPartial
         guard !partial.isEmpty else {
-            kbState.predictions = casedForCursor(predictionEngine.nextWords(after: lastContextWord()))
-            translateMissingChips(partial: "")
+            refreshNextWordPredictions()
             return
         }
 
@@ -185,7 +168,7 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
                     isLoading: false
                 ))
             }
-            kbState.predictions = padToThree(chips, upper: partial.first?.isUppercase ?? false)
+            kbState.predictions = carryOverTranslations(padToThree(chips, upper: partial.first?.isUppercase ?? false))
             translateMissingChips(partial: partial)
             return
         }
@@ -208,7 +191,7 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
             let src = matchedCase($0.source, like: partial)
             return Prediction(source: src, translation: $0.translation.isEmpty ? "" : matchTranslationCase($0.translation, toSource: src), highlighted: false, isLoading: false)
         })
-        kbState.predictions = padToThree(combined, upper: partial.first?.isUppercase ?? false)
+        kbState.predictions = carryOverTranslations(padToThree(combined, upper: partial.first?.isUppercase ?? false))
         translateMissingChips(partial: partial)
     }
 
@@ -265,12 +248,13 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
                 proxy.deleteBackward()
                 proxy.insertText(". ")
                 kbState.currentPartial = ""
-                kbState.predictions = predictionEngine.nextWords(after: lastContextWord())
+                refreshNextWordPredictions()
                 return
             }
             // Avoid stacking duplicate spaces.
             if before.hasSuffix(" ") {
                 kbState.currentPartial = ""
+                refreshNextWordPredictions()
                 return
             }
         }
@@ -279,7 +263,7 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
             for _ in 0..<raw.count { proxy.deleteBackward() }
             proxy.insertText(expansion + " ")
             kbState.currentPartial = ""
-            kbState.predictions = predictionEngine.nextWords(after: lastContextWord())
+            refreshNextWordPredictions()
             return
         }
 
@@ -304,8 +288,7 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
         kbState.currentPartial = ""
 
         guard !finalWord.isEmpty else {
-            kbState.predictions = casedForCursor(predictionEngine.nextWords(after: lastContextWord()))
-            translateMissingChips(partial: "")
+            refreshNextWordPredictions()
             return
         }
 
@@ -322,7 +305,7 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
         var combined: [Prediction] = [chip0]
         combined.append(contentsOf: casedForCursor(freshPredictions(after: finalWord)))
         let nextUpper = shouldCapitalize(contextBefore: proxy.documentContextBeforeInput ?? "")
-        kbState.predictions = padToThree(combined, upper: nextUpper)
+        kbState.predictions = carryOverTranslations(padToThree(combined, upper: nextUpper))
 
         // Fill missing translations on-device so next-word chips don't show bare
         // native words with no translation.
@@ -407,26 +390,43 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
         return String(chars.reversed())
     }
 
-    /// Whether the letter just typed should be uppercase, per the field's
-    /// autocapitalization type and the text before it. Deterministic and
-    /// independent of KeyboardKit's shift state.
+    /// Whether a word at the given context should be capitalized, per the field's
+    /// autocapitalization type. Shares the exact rule that drives the shift state
+    /// (`Autocap`) so chip casing and the keyboard case never disagree.
     private func shouldCapitalize(contextBefore: String) -> Bool {
-        switch keyboardContext.textDocumentProxy.autocapitalizationType ?? .sentences {
-        case .allCharacters:
-            return true
-        case .none:
-            return false
-        case .words:
-            return contextBefore.isEmpty || (contextBefore.last?.isWhitespace ?? false)
-        case .sentences:
-            if contextBefore.isEmpty || contextBefore.hasSuffix("\n") { return true }
-            if contextBefore.hasSuffix(" ") {
-                let lastNonSpace = contextBefore.reversed().first(where: { $0 != " " })
-                return lastNonSpace.map { ".!?".contains($0) } ?? true
-            }
-            return false
-        @unknown default:
-            return false
+        Autocap.shouldUppercase(
+            contextBefore: contextBefore,
+            type: keyboardContext.textDocumentProxy.autocapitalizationType ?? .sentences
+        )
+    }
+
+    /// Rebuild the bar with next-word suggestions for the current cursor: cased
+    /// for sentence position, padded to three chips, and translated on-device.
+    /// Used by every "word just finished" path so the bar is consistent however
+    /// you got there (space, punctuation, double-space, text expansion).
+    private func refreshNextWordPredictions() {
+        let upper = shouldCapitalize(contextBefore: keyboardContext.textDocumentProxy.documentContextBeforeInput ?? "")
+        kbState.predictions = padToThree(
+            casedForCursor(predictionEngine.nextWords(after: lastContextWord())),
+            upper: upper
+        )
+        translateMissingChips(partial: "")
+    }
+
+    /// Carry a translation already shown for the same word over to the rebuilt
+    /// chips, so a known translation doesn't flicker off and back on with each
+    /// keystroke while the (debounced) lookup re-runs.
+    private func carryOverTranslations(_ chips: [Prediction]) -> [Prediction] {
+        let prev = Dictionary(
+            kbState.predictions.compactMap { p -> (String, String)? in
+                (!p.source.isEmpty && !p.translation.isEmpty) ? (p.source.lowercased(), p.translation) : nil
+            },
+            uniquingKeysWith: { first, _ in first }
+        )
+        return chips.map { c in
+            guard c.translation.isEmpty, !c.source.isEmpty,
+                  let t = prev[c.source.lowercased()] else { return c }
+            return Prediction(source: c.source, translation: t, highlighted: c.highlighted, isLoading: c.isLoading, quoted: c.quoted)
         }
     }
 

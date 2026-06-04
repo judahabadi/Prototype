@@ -237,7 +237,7 @@ struct ProtoTypeKeyboardView: View {
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(Color(uiColor: .label))
                 Text(corrected)
-                    .font(.system(size: 15, weight: .regular))
+                    .font(.system(size: 17, weight: .regular))
                     .foregroundStyle(Color(uiColor: .label))
                     .lineLimit(1)
             }
@@ -258,7 +258,7 @@ struct ProtoTypeKeyboardView: View {
             HStack(spacing: 6) {
                 if selectionTranslating {
                     Text("Translating \"\(selection)\"…")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 17, weight: .regular))
                         .foregroundStyle(labelColor)
                         .lineLimit(1)
                     ProgressView().scaleEffect(0.7)
@@ -267,12 +267,12 @@ struct ProtoTypeKeyboardView: View {
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(labelColor)
                     Text("\(selection) → \(selectionTranslation)")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 17, weight: .regular))
                         .foregroundStyle(labelColor)
                         .lineLimit(1)
                 } else {
                     Text(selection)
-                        .font(.system(size: 16, weight: .regular))
+                        .font(.system(size: 17, weight: .regular))
                         .foregroundStyle(labelColor)
                         .lineLimit(1)
                 }
@@ -314,35 +314,35 @@ struct ProtoTypeKeyboardView: View {
             Text("\u{201C}\(p.source)\u{201D}")
                 .font(.system(size: 17, weight: .regular))
                 .foregroundStyle(labelColor)
-                .lineLimit(1).minimumScaleFactor(0.7)
+                .lineLimit(1)
         } else if p.isLoading {
             HStack(spacing: 4) {
                 Text(p.source)
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 17, weight: .regular))
                     .foregroundStyle(labelColor)
                 Text("/")
-                    .font(.system(size: 15))
+                    .font(.system(size: 17, weight: .regular))
                     .foregroundStyle(.secondary)
                 ProgressView().scaleEffect(0.6)
             }
-            .lineLimit(1).minimumScaleFactor(0.7)
+            .lineLimit(1)
         } else if p.translation.isEmpty {
             Text(p.source)
-                .font(.system(size: 17, weight: p.highlighted ? .semibold : .regular))
+                .font(.system(size: 17, weight: .regular))
                 .foregroundStyle(labelColor)
-                .lineLimit(1).minimumScaleFactor(0.7)
+                .lineLimit(1)
         } else {
             HStack(spacing: 4) {
                 Text(p.source)
-                    .font(.system(size: 17, weight: p.highlighted ? .semibold : .regular))
+                    .font(.system(size: 17, weight: .regular))
                 Text("/")
-                    .font(.system(size: 15))
+                    .font(.system(size: 17, weight: .regular))
                     .foregroundStyle(.secondary)
                 Text(p.translation)
-                    .font(.system(size: 17, weight: p.highlighted ? .semibold : .regular))
+                    .font(.system(size: 17, weight: .regular))
             }
             .foregroundStyle(labelColor)
-            .lineLimit(1).minimumScaleFactor(0.7)
+            .lineLimit(1)
         }
     }
 
