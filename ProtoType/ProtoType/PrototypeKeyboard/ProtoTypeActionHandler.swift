@@ -124,10 +124,29 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
     /// so it stays cheap during ordinary typing (which moves the cursor too).
     func syncToCursor() {
         guard kbState != nil else { return }
-        let derived = partialBeforeCursor()
+        let derived = wordAtCursor()
         guard derived != kbState.currentPartial else { return }
         kbState.currentPartial = derived
         updateLivePredictions()
+    }
+
+    /// The whole word the cursor sits in — letters before the cursor plus
+    /// letters after it. Unlike `partialBeforeCursor()`, this captures the full
+    /// word when the cursor lands in the middle of one (e.g. "hel|lo" -> "hello"),
+    /// so a cursor move translates the complete word. Empty if not on a word.
+    private func wordAtCursor() -> String {
+        let proxy = keyboardContext.textDocumentProxy
+        let before = proxy.documentContextBeforeInput ?? ""
+        let after = proxy.documentContextAfterInput ?? ""
+        var head: [Character] = []
+        for ch in before.reversed() {
+            if ch.isLetter { head.append(ch) } else { break }
+        }
+        var tail: [Character] = []
+        for ch in after {
+            if ch.isLetter { tail.append(ch) } else { break }
+        }
+        return String(head.reversed()) + String(tail)
     }
 
     // MARK: - Live (pre-space) predictions + translation
