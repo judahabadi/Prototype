@@ -405,9 +405,14 @@ enum SentenceFix {
                 in: mutable as String, range: range,
                 startingAt: location, wrap: false, language: language)
             if misspelled.location == NSNotFound { break }
+            let original = mutable.substring(with: misspelled)
+            // Take the top guess only when it's a real correction. UITextChecker
+            // often returns the Capitalized same word as the first guess for short
+            // words (e.g. "car" -> "Car"); accepting that would spuriously
+            // capitalize correctly-spelled words, so skip case-only changes.
             if let top = checker.guesses(
                 forWordRange: misspelled, in: mutable as String, language: language)?.first,
-               !top.isEmpty {
+               !top.isEmpty, top.lowercased() != original.lowercased() {
                 mutable.replaceCharacters(in: misspelled, with: top)
                 location = misspelled.location + (top as NSString).length
             } else {
