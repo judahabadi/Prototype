@@ -15,6 +15,8 @@ struct ProtoTypeKeyboardView: View {
     @State private var lastHandledSelection: String = ""
     @State private var selectionTranslation: String = ""
     @State private var selectionTranslating: Bool = false
+    // On-device "fix" for a highlighted sentence (empty when nothing to fix).
+    @State private var selectionFix: String = ""
 
     private var isRTL: Bool {
         state.nativeLanguage.isRTL || state.targetLanguage.isRTL
@@ -117,7 +119,7 @@ struct ProtoTypeKeyboardView: View {
     @ViewBuilder
     private var predictionBar: some View {
         if let selection = proxy?.selectedText, !selection.isEmpty {
-            selectionTranslateChip(selection: selection)
+            selectionBar(selection: selection)
                 .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
         } else {
             let count = visibleChipCount
@@ -173,10 +175,12 @@ struct ProtoTypeKeyboardView: View {
             lastHandledSelection = ""
             selectionTranslation = ""
             selectionTranslating = false
+            selectionFix = ""
             return
         }
         guard selection != lastHandledSelection else { return }
         lastHandledSelection = selection
+        selectionFix = SentenceFix.corrected(selection, languageCode: state.nativeLanguage.isoCode) ?? ""
         requestSelectionTranslation(selection)
     }
 
@@ -207,6 +211,39 @@ struct ProtoTypeKeyboardView: View {
         }
     }
 
+    /// Selection mode: an on-device "fix" chip (when something can be cleaned up)
+    /// beside the translate chip. Falls back to just the translate chip.
+    @ViewBuilder
+    private func selectionBar(selection: String) -> some View {
+        HStack(spacing: 0) {
+            if !selectionFix.isEmpty {
+                fixChip(corrected: selectionFix)
+                Rectangle()
+                    .fill(Color(uiColor: .separator))
+                    .frame(width: 0.33, height: 24)
+            }
+            selectionTranslateChip(selection: selection)
+        }
+    }
+
+    /// Tap to replace the highlighted text with its on-device cleaned-up version.
+    private func fixChip(corrected: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: "checkmark.circle")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(Color(uiColor: .label))
+            Text(corrected)
+                .font(.system(size: 15, weight: .regular))
+                .foregroundStyle(Color(uiColor: .label))
+                .lineLimit(2)
+                .minimumScaleFactor(0.6)
+        }
+        .padding(.horizontal, 8)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
+        .onTapGesture { replaceSelection(with: corrected) }
+    }
+
     private func selectionTranslateChip(selection: String) -> some View {
         let labelColor = Color(uiColor: .label)
         return HStack(spacing: 6) {
@@ -224,13 +261,13 @@ struct ProtoTypeKeyboardView: View {
                 Text("\(selection) → \(selectionTranslation)")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(labelColor)
-                    .lineLimit(1)
+                    .lineLimit(2)
                     .minimumScaleFactor(0.6)
             } else {
                 Text(selection)
                     .font(.system(size: 16, weight: .regular))
                     .foregroundStyle(labelColor)
-                    .lineLimit(1)
+                    .lineLimit(2)
                     .minimumScaleFactor(0.6)
             }
         }
@@ -242,12 +279,18 @@ struct ProtoTypeKeyboardView: View {
     /// Tapping the chip replaces the selection with its translation (Apple-style,
     /// deliberate). Not tapping leaves the original selection untouched.
     private func replaceSelectionWithTranslation() {
-        guard !selectionTranslation.isEmpty else { return }
-        proxy?.insertText(selectionTranslation)
+        replaceSelection(with: selectionTranslation)
+    }
+
+    /// Replace the highlighted text and clear selection-derived state.
+    private func replaceSelection(with text: String) {
+        guard !text.isEmpty else { return }
+        proxy?.insertText(text)
         proxy?.playInputClick()
         lastHandledSelection = ""
         selectionTranslation = ""
         selectionTranslating = false
+        selectionFix = ""
     }
 
     @ViewBuilder
@@ -337,4 +380,62 @@ enum AccentCallouts {
         "z": "zžźż",
         "g": "gğ"
     ]
+}
+
+/// On-device clean-up for a highlighted sentence — no network. Combines
+/// UITextChecker spelling correction with light tidy-up (collapse runs of
+/// spaces, capitalize the first letter, and add a terminating period to a
+/// multi-word sentence that lacks end punctuation). Returns nil when the
+/// result is identical to the input, i.e. there is nothing to fix.
+enum SentenceFix {
+
+    static func corrected(_ text: String, languageCode: String) -> String? {
+        let tidied = tidy(spellCorrected(text, languageCode: languageCode))
+        return tidied == text ? nil : tidied
+    }
+
+    private static func spellCorrected(_ text: String, languageCode: String) -> String {
+        let checker = UITextChecker()
+        guard let language = resolveLanguage(languageCode, checker: checker) else { return text }
+        let mutable = NSMutableString(string: text)
+        var location = 0
+        while location < mutable.length {
+            let range = NSRange(location: location, length: mutable.length - location)
+            let misspelled = checker.rangeOfMisspelledWord(
+                in: mutable as String, range: range,
+                startingAt: location, wrap: false, language: language)
+            if misspelled.location == NSNotFound { break }
+            if let top = checker.guesses(
+                forWordRange: misspelled, in: mutable as String, language: language)?.first,
+               !top.isEmpty {
+                mutable.replaceCharacters(in: misspelled, with: top)
+                location = misspelled.location + (top as NSString).length
+            } else {
+                location = misspelled.location + misspelled.length
+            }
+        }
+        return mutable as String
+    }
+
+    /// UITextChecker wants codes like "en"/"en_US"; fall back to any available
+    /// language sharing the ISO prefix, else nil (skip spelling correction).
+    private static func resolveLanguage(_ code: String, checker: UITextChecker) -> String? {
+        let available = UITextChecker.availableLanguages
+        if available.contains(code) { return code }
+        return available.first { $0.hasPrefix(code) }
+    }
+
+    private static func tidy(_ text: String) -> String {
+        var s = text.replacingOccurrences(of: "[ \\t]{2,}", with: " ", options: .regularExpression)
+        s = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !s.isEmpty else { return s }
+        if let first = s.firstIndex(where: { $0.isLetter }) {
+            s.replaceSubrange(first...first, with: s[first].uppercased())
+        }
+        let wordCount = s.split(whereSeparator: { $0.isWhitespace }).count
+        if wordCount >= 3, let last = s.last, last.isLetter || last.isNumber {
+            s.append(".")
+        }
+        return s
+    }
 }
