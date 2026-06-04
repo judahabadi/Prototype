@@ -22,7 +22,8 @@
 - **Space-bar cursor slide** — dragging horizontally on the space bar moves the cursor left/right via `adjustTextPosition(byCharacterOffset:)`.
 - **Long-press accents** — holding a letter key shows a callout of its diacritic variants (é, ñ, ü, ç…) for Latin-script languages, via `AccentCallouts` wired through KeyboardKit's `.keyboardCalloutActions` modifier. Non-mapped keys fall back to KeyboardKit's standard callouts.
 - **Accelerated delete** — holding backspace deletes character-by-character, then escalates to whole-word deletion after a sustained hold (`backspaceRepeats` counter in `ProtoTypeActionHandler`).
-- **Selected text translation** — when text is selected, the prediction bar collapses to a single full-width chip showing the translation of the selection; tapping replaces the selection with the translation.
+- **Selected text translation** — when text is selected, the prediction bar shows a chip with the translation of the selection (wrapping to two lines so long sentences stay readable); tapping replaces the selection with the translation.
+- **Selected text fix** — alongside the translation, an on-device "fix" chip offers a cleaned-up version of the highlighted sentence (UITextChecker spelling correction plus tidy casing/spacing/end punctuation via `SentenceFix`); tapping replaces the selection. No network.
 - **Globe long-press** — tap advances to next keyboard; long-press shows the native iOS input-mode popup.
 
 ### System integration
