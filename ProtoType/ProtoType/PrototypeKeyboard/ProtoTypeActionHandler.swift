@@ -31,9 +31,8 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
         case (.release, .character(let char)):
             return { [weak self] controller in
                 guard let self else { standard?(controller); return }
-                // KeyboardKit inserts the character using the shift state that
-                // `resyncKeyboardCase` keeps correct, so we no longer rewrite the
-                // letter's case here (that delete+re-insert raced fast typing).
+                // Let KeyboardKit insert the character and apply its own native
+                // auto-capitalization — we don't override the typed letter's case.
                 standard?(controller)
                 self.triggerHaptic()
                 let isLetter = char.count == 1 && (char.first?.isLetter ?? false)
