@@ -78,3 +78,10 @@ Implemented per the plan in `/root/.claude/plans/optimized-zooming-wilkinson.md`
 - **Next-word chips get translations**: `handleSpace`/punctuation paths call `translateMissingChips` so next-word suggestions show translations on-device instead of bare native words.
 - **Long words/highlighted text scroll**: prediction chips and the selection translate/fix chips are wrapped in a horizontal `ScrollView` (`defaultScrollAnchor(.center)`/`.leading`) so long content scrolls rather than being clipped/shrunk. (Verify tap + long-press reliability on device.)
 - **Word learning**: `AutocorrectService.note(typedWord:)` counts committed words in `AppGroup.defaults` (`typedWordFrequency`) and calls `UITextChecker.learnWord` after 3 uses, so frequently typed words stop being autocorrected and start appearing as suggestions — mirroring Apple's behaviour.
+
+### Typing-feel fixes (diagnosis follow-up, branch `claude/festive-meitner-73xZi`)
+
+- **Single capitalization authority**: removed the per-keystroke delete/re-insert case correction in `ProtoTypeActionHandler` (it raced fast typing → dropped/doubled letters) and the double async `resyncKeyboardCase` pass. `resyncKeyboardCase` now drives KeyboardKit's `keyboardCase` once per change, sharing one rule (`Autocap.shouldUppercase`, in `KeyboardViewController.swift`) with the action handler's `shouldCapitalize`/`casedForCursor`, so shift state and chip casing can't disagree. (KeyboardKit's own autocap left enabled; shared logic means they agree. Needs on-device verification.)
+- **Consistent suggestion paths**: every "word finished" branch (space, punctuation, double-space→". ", duplicate-space, text expansion, empty word) now routes through `refreshNextWordPredictions()` (cased + padded to 3 + translated) instead of bare lowercase/untranslated `nextWords`.
+- **Less chip jitter**: `carryOverTranslations` reuses a translation already shown for the same word when chips rebuild each keystroke, so known translations don't flicker off/on.
+- Not done (user didn't select): filtering low-quality 1-letter ngram tokens (`s`,`i`,`t`) and the next-word-guesses-mixed-into-the-word-being-typed behaviour.
