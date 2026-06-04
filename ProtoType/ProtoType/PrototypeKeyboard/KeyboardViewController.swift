@@ -86,6 +86,10 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
         super.textDidChange(textInput)
         kbState?.contextSignal += 1
         resyncKeyboardCase()
+        // Re-apply on the next runloop so our case wins even after KeyboardKit's
+        // own (sometimes async) auto-capitalization pass — otherwise some words
+        // mid-sentence come back capitalized.
+        DispatchQueue.main.async { [weak self] in self?.resyncKeyboardCase() }
     }
 
     /// Authoritative auto-capitalization: runs after KeyboardKit's own case sync

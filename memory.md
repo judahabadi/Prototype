@@ -85,3 +85,10 @@ Implemented per the plan in `/root/.claude/plans/optimized-zooming-wilkinson.md`
 - **Consistent suggestion paths**: every "word finished" branch (space, punctuation, double-space→". ", duplicate-space, text expansion, empty word) now routes through `refreshNextWordPredictions()` (cased + padded to 3 + translated) instead of bare lowercase/untranslated `nextWords`.
 - **Less chip jitter**: `carryOverTranslations` reuses a translation already shown for the same word when chips rebuild each keystroke, so known translations don't flicker off/on.
 - Not done (user didn't select): filtering low-quality 1-letter ngram tokens (`s`,`i`,`t`) and the next-word-guesses-mixed-into-the-word-being-typed behaviour.
+
+### Capitalization regressions follow-up (branch `claude/festive-meitner-73xZi`)
+
+User report: some mid-sentence words (the/to/car) still capitalized; bar translations still capital mid-sentence.
+- **Restored the async `resyncKeyboardCase` re-apply** in `textDidChange` (removing it let KeyboardKit's late auto-cap pass win, capitalizing some mid-sentence words). It re-applies our case on the next runloop so we're the last writer.
+- **Autocorrections are now case-matched to the sentence** in `handleSpace` (`firstLetterCased(correction, uppercase: wantUpper)` where `wantUpper` is judged from the text *before* the word) — `UITextChecker` often returns a Capitalized guess (e.g. typo→"Car") that previously capitalized a mid-sentence word.
+- **Machine translations are case-matched to the source** (`machineCased`): the local dictionaries are all lowercase, so any translation fetched at runtime (Apple/MyMemory) is machine output and is sentence-cased; it now follows the source word's case (lowercase mid-sentence). Dictionary-sourced translations still use `matchTranslationCase` (preserve).

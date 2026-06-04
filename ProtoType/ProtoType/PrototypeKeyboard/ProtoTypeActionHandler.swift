@@ -223,7 +223,7 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
                     let c = self.kbState.predictions[index]
                     self.kbState.predictions[index] = Prediction(
                         source: c.source,
-                        translation: self.matchTranslationCase(clean, toSource: c.source),
+                        translation: self.machineCased(clean, toSource: c.source),
                         highlighted: c.highlighted,
                         isLoading: false
                     )
@@ -267,15 +267,21 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
             return
         }
 
+        // Whether this word sits at a sentence start, judged from the text before
+        // the word itself — used to keep an autocorrection's case in line with the
+        // sentence (UITextChecker often returns a Capitalized guess that would
+        // otherwise capitalize a mid-sentence word).
+        let wantUpper = shouldCapitalize(contextBefore: String((proxy.documentContextBeforeInput ?? "").dropLast(raw.count)))
+
         var finalWord = cleaned
         var insertedWord = raw            // the word as it now reads in the document
         if !cleaned.isEmpty,
            let correction = AutocorrectService.correct(word: cleaned, language: currentNativeLanguage(), lexicon: Set(getLexicon().keys)),
            correction.lowercased() != cleaned {
+            insertedWord = firstLetterCased(correction, uppercase: wantUpper)
             for _ in 0..<raw.count { proxy.deleteBackward() }
-            proxy.insertText(correction)
+            proxy.insertText(insertedWord)
             finalWord = correction.lowercased()
-            insertedWord = correction
         } else if currentNativeLanguage().isoCode == "en", isEnglishI(cleaned),
                   let f = raw.first, f.isLowercase {
             // Auto-capitalize the English pronoun "I" and its contractions ("i'm").
@@ -323,7 +329,7 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
                     if !current.isEmpty, current[0].source == insertedWord {
                         current[0] = Prediction(
                             source: insertedWord,
-                            translation: result == "—" ? "" : self.matchTranslationCase(result, toSource: insertedWord),
+                            translation: result == "—" ? "" : self.machineCased(result, toSource: insertedWord),
                             highlighted: false,
                             isLoading: false
                         )
@@ -445,6 +451,15 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
             return first.isUppercase ? s : first.uppercased() + s.dropFirst()
         }
         return first.isLowercase ? s : first.lowercased() + s.dropFirst()
+    }
+
+    /// Force a machine (Apple/MyMemory) translation's leading case to match its
+    /// source word. Those results are sentence-cased (capital first letter) even
+    /// mid-sentence; the local dictionary is all lowercase, so anything fetched
+    /// at runtime is machine output and should follow the source word's case.
+    private func machineCased(_ translation: String, toSource source: String) -> String {
+        let upper = source.first(where: { $0.isLetter })?.isUppercase ?? false
+        return firstLetterCased(translation, uppercase: upper)
     }
 
     /// Case a translation for where it will appear: capitalized at a sentence
