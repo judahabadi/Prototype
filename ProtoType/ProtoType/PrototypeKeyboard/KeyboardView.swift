@@ -130,28 +130,21 @@ struct ProtoTypeKeyboardView: View {
             HStack(spacing: 0) {
                 ForEach(0..<count, id: \.self) { idx in
                     let p = idx < state.predictions.count ? state.predictions[idx] : .empty
-                    // A long word/translation scrolls horizontally instead of being
-                    // clipped or shrunk; short content stays centred in its slot.
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        chipContent(p)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 4)
-                            .background {
-                                // Apple-style rounded "pill" behind the auto-correct default.
-                                if p.highlighted {
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .fill(Color(uiColor: .systemGray4))
-                                }
+                    chipContent(p)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background {
+                            // Apple-style rounded "pill" behind the auto-correct default.
+                            if p.highlighted {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color(uiColor: .systemGray4))
                             }
-                            // Explicit row height keeps content vertically centred
-                            // and stable across keyboard switches (no greedy sizing).
-                            .frame(height: Self.barHeight)
-                    }
-                    .defaultScrollAnchor(.center)
-                    .scrollBounceBehavior(.basedOnSize)
-                    .frame(maxWidth: .infinity)
-                    .contentShape(Rectangle())
-                    .onTapGesture {
+                        }
+                        // Centre the word in its slot, both axes (a horizontal
+                        // ScrollView pinned short content to the left edge).
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
                             guard !p.source.isEmpty else { return }
                             pickPrediction(p, useTranslation: false)
                         }
