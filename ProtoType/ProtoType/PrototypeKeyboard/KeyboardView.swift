@@ -54,7 +54,7 @@ struct ProtoTypeKeyboardView: View {
                 if shouldPredict {
                     VStack(spacing: 0) {
                         predictionBar
-                            .frame(height: 44)
+                            .frame(height: 38)
                         Rectangle()
                             .fill(Color(uiColor: .separator))
                             .frame(height: 0.5)
@@ -126,19 +126,26 @@ struct ProtoTypeKeyboardView: View {
             HStack(spacing: 0) {
                 ForEach(0..<count, id: \.self) { idx in
                     let p = idx < state.predictions.count ? state.predictions[idx] : .empty
-                    chipContent(p)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background {
-                            // Apple-style rounded "pill" behind the auto-correct default.
-                            if p.highlighted {
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color(uiColor: .systemGray4))
+                    // A long word/translation scrolls horizontally instead of being
+                    // clipped or shrunk; short content stays centred in its slot.
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        chipContent(p)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                            .background {
+                                // Apple-style rounded "pill" behind the auto-correct default.
+                                if p.highlighted {
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color(uiColor: .systemGray4))
+                                }
                             }
-                        }
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
+                            .frame(maxHeight: .infinity)
+                    }
+                    .defaultScrollAnchor(.center)
+                    .scrollBounceBehavior(.basedOnSize)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
                             guard !p.source.isEmpty else { return }
                             pickPrediction(p, useTranslation: false)
                         }
@@ -157,13 +164,9 @@ struct ProtoTypeKeyboardView: View {
         }
     }
 
-    /// Drop the third chip (keep the first two) when the first chip's
-    /// word + translation is long, instead of shrinking the font to fit three.
-    private var visibleChipCount: Int {
-        let first = state.predictions.first ?? .empty
-        let length = first.source.count + first.translation.count
-        return length >= 12 ? 2 : 3
-    }
+    /// Always show three chips. Long word/translation content scrolls within its
+    /// slot (see `predictionBar`) rather than forcing a chip to be dropped.
+    private let visibleChipCount = 3
 
     // MARK: - Selection auto-translate (Feature 2)
 
@@ -228,17 +231,21 @@ struct ProtoTypeKeyboardView: View {
 
     /// Tap to replace the highlighted text with its on-device cleaned-up version.
     private func fixChip(corrected: String) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: "checkmark.circle")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(Color(uiColor: .label))
-            Text(corrected)
-                .font(.system(size: 15, weight: .regular))
-                .foregroundStyle(Color(uiColor: .label))
-                .lineLimit(2)
-                .minimumScaleFactor(0.6)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                Image(systemName: "checkmark.circle")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(Color(uiColor: .label))
+                Text(corrected)
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundStyle(Color(uiColor: .label))
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 8)
+            .frame(maxHeight: .infinity)
         }
-        .padding(.horizontal, 8)
+        .defaultScrollAnchor(.leading)
+        .scrollBounceBehavior(.basedOnSize)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
         .onTapGesture { replaceSelection(with: corrected) }
@@ -246,31 +253,35 @@ struct ProtoTypeKeyboardView: View {
 
     private func selectionTranslateChip(selection: String) -> some View {
         let labelColor = Color(uiColor: .label)
-        return HStack(spacing: 6) {
-            if selectionTranslating {
-                Text("Translating \"\(selection)\"…")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(labelColor)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                ProgressView().scaleEffect(0.7)
-            } else if !selectionTranslation.isEmpty {
-                Image(systemName: "character.bubble")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(labelColor)
-                Text("\(selection) → \(selectionTranslation)")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(labelColor)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.6)
-            } else {
-                Text(selection)
-                    .font(.system(size: 16, weight: .regular))
-                    .foregroundStyle(labelColor)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.6)
+        let centered = selectionTranslation.isEmpty && !selectionTranslating
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                if selectionTranslating {
+                    Text("Translating \"\(selection)\"…")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(labelColor)
+                        .lineLimit(1)
+                    ProgressView().scaleEffect(0.7)
+                } else if !selectionTranslation.isEmpty {
+                    Image(systemName: "character.bubble")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(labelColor)
+                    Text("\(selection) → \(selectionTranslation)")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(labelColor)
+                        .lineLimit(1)
+                } else {
+                    Text(selection)
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundStyle(labelColor)
+                        .lineLimit(1)
+                }
             }
+            .padding(.horizontal, 8)
+            .frame(maxHeight: .infinity)
         }
+        .defaultScrollAnchor(centered ? .center : .leading)
+        .scrollBounceBehavior(.basedOnSize)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
         .onTapGesture { replaceSelectionWithTranslation() }

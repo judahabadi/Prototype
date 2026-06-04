@@ -46,4 +46,24 @@ struct AutocorrectService {
         guard !w.isEmpty else { return }
         UITextChecker.learnWord(w)
     }
+
+    private static let frequencyKey = "typedWordFrequency"
+    private static let learnThreshold = 3
+
+    /// Count how often the user commits each word and, once one has been typed
+    /// `learnThreshold` times, learn it — so words the user uses a lot stop being
+    /// flagged/autocorrected and start showing up as suggestions (like Apple's
+    /// "learns the words you use" behaviour). Persisted across sessions.
+    static func note(typedWord word: String) {
+        let w = word.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        guard w.count >= 3, w.allSatisfy({ $0.isLetter }) else { return }
+        let defaults = AppGroup.defaults
+        var counts = defaults.dictionary(forKey: frequencyKey) as? [String: Int] ?? [:]
+        let n = (counts[w] ?? 0) + 1
+        counts[w] = n
+        defaults.set(counts, forKey: frequencyKey)
+        if n == learnThreshold {
+            learn(word)
+        }
+    }
 }

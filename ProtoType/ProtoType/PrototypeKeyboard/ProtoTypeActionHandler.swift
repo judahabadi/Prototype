@@ -57,7 +57,12 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
                 } else {
                     self.applySmartPunctuation(for: char)
                     self.kbState.currentPartial = ""
-                    self.kbState.predictions = self.predictionEngine.nextWords(after: self.lastContextWord())
+                    let upper = self.shouldCapitalize(contextBefore: proxy.documentContextBeforeInput ?? "")
+                    self.kbState.predictions = self.padToThree(
+                        self.casedForCursor(self.predictionEngine.nextWords(after: self.lastContextWord())),
+                        upper: upper
+                    )
+                    self.translateMissingChips(partial: "")
                 }
             }
 
@@ -154,8 +159,8 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
     private func updateLivePredictions() {
         let partial = kbState.currentPartial
         guard !partial.isEmpty else {
-            liveTranslateTask?.cancel()
-            kbState.predictions = predictionEngine.nextWords(after: lastContextWord())
+            kbState.predictions = casedForCursor(predictionEngine.nextWords(after: lastContextWord()))
+            translateMissingChips(partial: "")
             return
         }
 
@@ -171,15 +176,16 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
                 Prediction(source: partial, translation: "", highlighted: false, isLoading: false, quoted: true)
             ]
             for (i, guess) in guesses.enumerated() {
+                let src = matchedCase(guess, like: partial)
+                let trans = predictionEngine.translation(for: guess) ?? ""
                 chips.append(Prediction(
-                    source: matchedCase(guess, like: partial),
-                    translation: predictionEngine.translation(for: guess) ?? "",
+                    source: src,
+                    translation: trans.isEmpty ? "" : matchTranslationCase(trans, toSource: src),
                     highlighted: i == 0,   // top correction gets the pill
                     isLoading: false
                 ))
             }
-            while chips.count < 3 { chips.append(.empty) }
-            kbState.predictions = chips
+            kbState.predictions = padToThree(chips, upper: partial.first?.isUppercase ?? false)
             translateMissingChips(partial: partial)
             return
         }
@@ -190,18 +196,19 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
         let completions = predictionEngine.predictions(for: partial)
             .filter { !$0.source.isEmpty && $0.source.lowercased() != partial.lowercased() }
 
+        let chip0Trans = predictionEngine.translation(for: partial) ?? ""
         let chip0 = Prediction(
             source: partial,
-            translation: predictionEngine.translation(for: partial) ?? "",
+            translation: chip0Trans.isEmpty ? "" : matchTranslationCase(chip0Trans, toSource: partial),
             highlighted: false,
             isLoading: false
         )
         var combined: [Prediction] = [chip0]
         combined.append(contentsOf: completions.prefix(2).map {
-            Prediction(source: matchedCase($0.source, like: partial), translation: $0.translation, highlighted: false, isLoading: false)
+            let src = matchedCase($0.source, like: partial)
+            return Prediction(source: src, translation: $0.translation.isEmpty ? "" : matchTranslationCase($0.translation, toSource: src), highlighted: false, isLoading: false)
         })
-        while combined.count < 3 { combined.append(.empty) }
-        kbState.predictions = combined
+        kbState.predictions = padToThree(combined, upper: partial.first?.isUppercase ?? false)
         translateMissingChips(partial: partial)
     }
 
@@ -233,7 +240,7 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
                     let c = self.kbState.predictions[index]
                     self.kbState.predictions[index] = Prediction(
                         source: c.source,
-                        translation: clean,
+                        translation: self.matchTranslationCase(clean, toSource: c.source),
                         highlighted: c.highlighted,
                         isLoading: false
                     )
@@ -277,33 +284,49 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
         }
 
         var finalWord = cleaned
+        var insertedWord = raw            // the word as it now reads in the document
         if !cleaned.isEmpty,
            let correction = AutocorrectService.correct(word: cleaned, language: currentNativeLanguage(), lexicon: Set(getLexicon().keys)),
            correction.lowercased() != cleaned {
             for _ in 0..<raw.count { proxy.deleteBackward() }
             proxy.insertText(correction)
             finalWord = correction.lowercased()
+            insertedWord = correction
+        } else if currentNativeLanguage().isoCode == "en", isEnglishI(cleaned),
+                  let f = raw.first, f.isLowercase {
+            // Auto-capitalize the English pronoun "I" and its contractions ("i'm").
+            insertedWord = f.uppercased() + raw.dropFirst()
+            for _ in 0..<raw.count { proxy.deleteBackward() }
+            proxy.insertText(insertedWord)
         }
 
         proxy.insertText(" ")
         kbState.currentPartial = ""
 
         guard !finalWord.isEmpty else {
-            kbState.predictions = predictionEngine.nextWords(after: lastContextWord())
+            kbState.predictions = casedForCursor(predictionEngine.nextWords(after: lastContextWord()))
+            translateMissingChips(partial: "")
             return
         }
 
+        // Learn words the user types often so they stop being autocorrected.
+        AutocorrectService.note(typedWord: insertedWord)
+
         let localTranslation = predictionEngine.translation(for: finalWord) ?? ""
         let chip0 = Prediction(
-            source: finalWord,
-            translation: localTranslation,
+            source: insertedWord,
+            translation: localTranslation.isEmpty ? "" : matchTranslationCase(localTranslation, toSource: insertedWord),
             highlighted: false,
             isLoading: false
         )
         var combined: [Prediction] = [chip0]
-        combined.append(contentsOf: freshPredictions(after: finalWord))
-        while combined.count < 3 { combined.append(.empty) }
-        kbState.predictions = combined
+        combined.append(contentsOf: casedForCursor(freshPredictions(after: finalWord)))
+        let nextUpper = shouldCapitalize(contextBefore: proxy.documentContextBeforeInput ?? "")
+        kbState.predictions = padToThree(combined, upper: nextUpper)
+
+        // Fill missing translations on-device so next-word chips don't show bare
+        // native words with no translation.
+        translateMissingChips(partial: "")
 
         if localTranslation.isEmpty {
             let from = currentNativeLanguage()
@@ -314,10 +337,10 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
                 await MainActor.run { [weak self] in
                     guard let self else { return }
                     var current = kbState.predictions
-                    if !current.isEmpty, current[0].source == finalWord {
+                    if !current.isEmpty, current[0].source == insertedWord {
                         current[0] = Prediction(
-                            source: finalWord,
-                            translation: result == "—" ? "" : result,
+                            source: insertedWord,
+                            translation: result == "—" ? "" : self.matchTranslationCase(result, toSource: insertedWord),
                             highlighted: false,
                             isLoading: false
                         )
@@ -413,6 +436,68 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
         guard let t = typed.first, t.isUppercase,
               let w = word.first, w.isLowercase else { return word }
         return w.uppercased() + word.dropFirst()
+    }
+
+    /// Force the first letter of `s` to the given case; the rest is untouched.
+    private func firstLetterCased(_ s: String, uppercase: Bool) -> String {
+        guard let first = s.first else { return s }
+        if uppercase {
+            return first.isUppercase ? s : first.uppercased() + s.dropFirst()
+        }
+        return first.isLowercase ? s : first.lowercased() + s.dropFirst()
+    }
+
+    /// Match a translation's leading case to its source chip, so the translation
+    /// half never shows a stray capital mid-sentence (nor stays lowercase where
+    /// the source word is capitalized).
+    private func matchTranslationCase(_ translation: String, toSource source: String) -> String {
+        guard let f = source.first(where: { $0.isLetter }) else { return translation }
+        return firstLetterCased(translation, uppercase: f.isUppercase)
+    }
+
+    /// Case next-word suggestion chips for where they'll be inserted: capitalized
+    /// at a sentence start, lowercase mid-sentence — source and translation alike.
+    /// The quoted "keep my spelling" chip is left untouched.
+    private func casedForCursor(_ preds: [Prediction]) -> [Prediction] {
+        let upper = shouldCapitalize(contextBefore: keyboardContext.textDocumentProxy.documentContextBeforeInput ?? "")
+        return preds.map { p in
+            guard !p.source.isEmpty, !p.quoted else { return p }
+            return Prediction(
+                source: firstLetterCased(p.source, uppercase: upper),
+                translation: p.translation.isEmpty ? "" : firstLetterCased(p.translation, uppercase: upper),
+                highlighted: p.highlighted,
+                isLoading: p.isLoading,
+                quoted: p.quoted
+            )
+        }
+    }
+
+    /// Always present three chips: keep the supplied (non-empty) chips and fill
+    /// any remaining slots with sensible next-word guesses, so the bar never
+    /// shows blank slots while typing. `upper` cases the filler words.
+    private func padToThree(_ chips: [Prediction], upper: Bool) -> [Prediction] {
+        var out = chips.filter { !$0.source.isEmpty }
+        var seen = Set(out.map { $0.source.lowercased() })
+        if out.count < 3 {
+            for e in predictionEngine.nextWords(after: lastContextWord(), limit: 12) where out.count < 3 {
+                let key = e.source.lowercased()
+                guard !e.source.isEmpty, !seen.contains(key) else { continue }
+                seen.insert(key)
+                out.append(Prediction(
+                    source: firstLetterCased(e.source, uppercase: upper),
+                    translation: e.translation.isEmpty ? "" : firstLetterCased(e.translation, uppercase: upper),
+                    highlighted: false,
+                    isLoading: false
+                ))
+            }
+        }
+        while out.count < 3 { out.append(.empty) }
+        return Array(out.prefix(3))
+    }
+
+    /// The English pronoun "I" and its contractions ("i'm", "i'll", "i've"…).
+    private func isEnglishI(_ word: String) -> Bool {
+        word == "i" || word.hasPrefix("i'") || word.hasPrefix("i\u{2019}")
     }
 
     private func lastContextWord() -> String {

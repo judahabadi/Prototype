@@ -68,3 +68,13 @@ Implemented per the plan in `/root/.claude/plans/optimized-zooming-wilkinson.md`
 ### Branching rule (user instruction, active)
 - **Do not push to main or merge PRs without explicit "merge" command from user.**
 - CLAUDE.md says push to both feature branch and main — honor both but only on explicit instruction.
+
+### QuickType bar fixes (branch `claude/festive-meitner-73xZi`)
+
+- **Bar height 44 → 38 pt** (`KeyboardView.swift`) to match Apple's native QuickType bar height (was reading taller than native).
+- **Capitalization accuracy** (`ProtoTypeActionHandler.swift`): suggestion chips now case both the source word *and* its translation to where they'll land — `matchTranslationCase` (translation follows source case) and `casedForCursor` (next-word chips capitalized at sentence start, lowercase mid-sentence). Fixes stray capitals on the 2nd word's translation and lowercase-at-sentence-start. Caveat: translations are forced to match the source word's case, so a capitalized target-language noun (e.g. German) is lowercased mid-sentence.
+- **Standalone English "I"**: `handleSpace` now capitalizes lone "i" / "i'm" / "i'll" etc.
+- **Always 3 chips**: `PredictionEngine.nextWords` tops up from the high-frequency fallback (never returns blanks) and `padToThree` fills any remaining live-typing slots. `visibleChipCount` is now always 3 (no longer drops the 3rd chip for long content — long content scrolls instead).
+- **Next-word chips get translations**: `handleSpace`/punctuation paths call `translateMissingChips` so next-word suggestions show translations on-device instead of bare native words.
+- **Long words/highlighted text scroll**: prediction chips and the selection translate/fix chips are wrapped in a horizontal `ScrollView` (`defaultScrollAnchor(.center)`/`.leading`) so long content scrolls rather than being clipped/shrunk. (Verify tap + long-press reliability on device.)
+- **Word learning**: `AutocorrectService.note(typedWord:)` counts committed words in `AppGroup.defaults` (`typedWordFrequency`) and calls `UITextChecker.learnWord` after 3 uses, so frequently typed words stop being autocorrected and start appearing as suggestions — mirroring Apple's behaviour.
