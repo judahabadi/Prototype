@@ -7,6 +7,9 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
     var kbState: KeyboardState!
     var predictionEngine: PredictionEngine!
     private var lexicon: [String: String] = [:]
+    /// Held weakly — `services.actionHandler` owns it. Used to re-sync the
+    /// current word to the cursor when the selection moves.
+    private weak var protoHandler: ProtoTypeActionHandler?
 
     override func viewDidLoad() {
         // Initialize our state before calling super — KK may call viewWillSetupKeyboardView
@@ -34,6 +37,7 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
         handler.predictionEngine = predictionEngine
         handler.getLexicon = { [weak self] in self?.lexicon ?? [:] }
         services.actionHandler = handler
+        protoHandler = handler
 
         reloadLexicon()
     }
@@ -119,6 +123,11 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
     override func selectionDidChange(_ textInput: UITextInput?) {
         super.selectionDidChange(textInput)
         kbState?.contextSignal += 1
+        // When the cursor moves (not just on text change), re-evaluate the shift
+        // state and the current word for the new position, so editing an earlier
+        // word factors in where the cursor actually is — like Apple's keyboard.
+        resyncKeyboardCase()
+        protoHandler?.syncToCursor()
     }
 
     // MARK: - KeyboardProxy
