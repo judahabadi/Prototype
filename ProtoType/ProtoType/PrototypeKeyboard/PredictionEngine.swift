@@ -78,7 +78,14 @@ final class PredictionEngine {
             .trimmingCharacters(in: .whitespacesAndNewlines)
         if !key.isEmpty, let nexts = ngrams[key] {
             var out: [Prediction] = []
+            var seen = Set<String>()
             for w in nexts where out.count < limit {
+                guard seen.insert(w).inserted else { continue }
+                out.append(Prediction(source: w, translation: dict[w] ?? "", highlighted: false, isLoading: false))
+            }
+            // Top up from the high-frequency fallback so we never return blanks.
+            for w in Self.fallback where out.count < limit {
+                guard seen.insert(w).inserted else { continue }
                 out.append(Prediction(source: w, translation: dict[w] ?? "", highlighted: false, isLoading: false))
             }
             while out.count < limit { out.append(.empty) }

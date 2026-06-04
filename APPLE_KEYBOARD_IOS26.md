@@ -141,7 +141,7 @@ complaints, a calmer, more predictable correction is arguably a feature.
 
 | Property | Value to start from |
 |---|---|
-| Bar height | ~44 pt (matches a key row; ≥44 pt keeps tap targets legal) |
+| Bar height | ~38 pt (matches Apple's native QuickType bar; the chip's full slot stays the tap target) |
 | Chips | 3, equal width, thin vertical separators between them |
 | Chip font | System font, ~`UIFont.systemFont(ofSize: 17)`, regular weight |
 | Default-candidate emphasis | Subtle — Apple shades the auto-apply candidate's pill, not bold text |
