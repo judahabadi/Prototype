@@ -274,7 +274,16 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
 
         var finalWord = cleaned
         var insertedWord = raw            // the word as it now reads in the document
-        if !cleaned.isEmpty,
+        if currentNativeLanguage().isoCode == "en", let contraction = Self.englishContractions[cleaned] {
+            // Apple-style contraction fix: ill -> I'll, dont -> don't, youre -> you're.
+            // "I" contractions stay capital-I; the rest follow the sentence position.
+            let apostrophe = proxy.smartQuotesType == .no ? "'" : "\u{2019}"
+            let cased = contraction.hasPrefix("I'") ? contraction : firstLetterCased(contraction, uppercase: wantUpper)
+            insertedWord = cased.replacingOccurrences(of: "'", with: apostrophe)
+            for _ in 0..<raw.count { proxy.deleteBackward() }
+            proxy.insertText(insertedWord)
+            finalWord = contraction.lowercased()
+        } else if !cleaned.isEmpty,
            let correction = AutocorrectService.correct(word: cleaned, language: currentNativeLanguage(), lexicon: Set(getLexicon().keys)),
            correction.lowercased() != cleaned {
             insertedWord = firstLetterCased(correction, uppercase: wantUpper)
@@ -517,6 +526,24 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
     private func isEnglishI(_ word: String) -> Bool {
         word == "i" || word.hasPrefix("i'") || word.hasPrefix("i\u{2019}")
     }
+
+    /// Apostrophe-less words that Apple's keyboard auto-fixes into contractions.
+    /// Values use a plain apostrophe; it's swapped for a curly one on insert when
+    /// smart quotes are on. Ambiguous-with-a-real-word forms (its, were, well,
+    /// wed, lets, hell, shell) are deliberately omitted to avoid wrong fixes.
+    private static let englishContractions: [String: String] = [
+        "im": "I'm", "ive": "I've", "ill": "I'll", "id": "I'd",
+        "dont": "don't", "doesnt": "doesn't", "didnt": "didn't",
+        "cant": "can't", "couldnt": "couldn't", "wouldnt": "wouldn't",
+        "shouldnt": "shouldn't", "wont": "won't", "wasnt": "wasn't",
+        "werent": "weren't", "isnt": "isn't", "arent": "aren't",
+        "havent": "haven't", "hasnt": "hasn't", "hadnt": "hadn't",
+        "mustnt": "mustn't", "neednt": "needn't", "aint": "ain't",
+        "youre": "you're", "youve": "you've", "youll": "you'll", "youd": "you'd",
+        "theyre": "they're", "theyve": "they've", "theyll": "they'll", "theyd": "they'd",
+        "weve": "we've", "thats": "that's", "whats": "what's",
+        "theres": "there's", "hes": "he's", "shes": "she's"
+    ]
 
     private func lastContextWord() -> String {
         let before = keyboardContext.textDocumentProxy.documentContextBeforeInput ?? ""
