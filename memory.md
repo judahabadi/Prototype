@@ -114,3 +114,15 @@ User decision: "keep the keyboardkit logic not ours." Our custom case layer kept
 ### Apple-style contractions (branch `claude/festive-meitner-73xZi`)
 
 User: "ill" doesn't auto-fix to "I'll" like Apple. Confirmed KeyboardKit (free; Pro not installed) isn't doing autocomplete here — the app uses its own engine. Added `englishContractions` map in `ProtoTypeActionHandler` and a branch in `handleSpace` (English only, takes priority over UITextChecker). ill→I'll, im→I'm, ive→I've, id→I'd (always capital-I), plus dont/doesnt/cant/wont/youre/theyre/weve/thats/hes/shes etc. (cased to sentence position). Apostrophe is curly (’) unless smartQuotes off. Deliberately omitted ambiguous-with-real-word forms (its, were, well, wed, lets, hell, shell). Tradeoff: "ill"/"id" will also fire when the user means the real words (sick / id) — Apple does this too.
+
+### Centering bug found (branch `claude/festive-meitner-73xZi`)
+
+Root cause: prediction chips were wrapped in a horizontal `ScrollView` with `defaultScrollAnchor(.center)` — but that only sets scroll offset when content OVERFLOWS. When a word is shorter than its slot (normal case), a ScrollView pins it to the LEADING edge, so words sat left-of-centre. Removed the per-chip ScrollView; chip content is now centred in each slot via `.frame(maxWidth:.infinity, maxHeight:.infinity, alignment:.center)`. Trade-off: long words truncate (lineLimit 1) instead of scrolling — centering was the explicit ask. (Selection chips still use ScrollView; their text is usually long.)
+
+### Capitalization root cause FOUND (branch `claude/festive-meitner-73xZi`)
+
+Symptom (user): every word after a space capitalized ("The To Car"), in EVERY app, when TYPING LETTERS (not tapping chips). Persisted even after PR #20 reverted to KeyboardKit-native autocap.
+
+Root cause: the action handler replaces the `.space` action with our own `handleSpace()` and never calls `standard?(controller)`, so KeyboardKit's "lowercase the next word after a mid-sentence space" never runs. `handleSpace` inserts the trailing space but never set `keyboardCase`. The `.character` path DOES call `standard`, which is why the first word + within-word letters were correct — only post-space words were wrong. The shared `Autocap.shouldUppercase` rule itself was already correct.
+
+Fix: disabled KeyboardKit's native autocap (`state.keyboardContext.settings.isAutocapitalizationEnabled = false` in viewDidLoad) and made `applyAutoCase()` the sole authority — it sets `keyboardContext.keyboardCase = .capitalized/.lowercased` from `Autocap.shouldUppercase(documentContextBeforeInput)` on every `textDidChange`/`selectionDidChange` + on appear. Guards `isCapsLocked` so manual caps-lock is preserved; manual single-shift still gives one capital (textDidChange resets case after the letter is inserted). NEEDS on-device verification + CI must confirm the `isCapsLocked`/`keyboardCase` API names compile.
