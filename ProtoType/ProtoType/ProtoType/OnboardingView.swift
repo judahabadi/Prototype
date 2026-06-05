@@ -15,6 +15,7 @@ struct OnboardingView: View {
             SetupScreen {
                 appState.hasCompletedOnboarding = true
             }
+            .environment(appState)
         }
     }
 }
@@ -131,7 +132,9 @@ private struct LanguageScreen: View {
 // MARK: - Keyboard Setup
 
 private struct SetupScreen: View {
+    @Environment(AppState.self) private var appState
     let onContinue: () -> Void
+    @State private var pollTimer: Timer?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -169,14 +172,36 @@ private struct SetupScreen: View {
                     Label("Open Settings", systemImage: "gear")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.bordered)
                 .controlSize(.large)
+
+                Button("Continue", action: onContinue)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .frame(maxWidth: .infinity)
+                    .disabled(!appState.keyboardHasLoaded)
+
+                if !appState.keyboardHasLoaded {
+                    Text("Continue unlocks once ProtoType is active — tap the keyboard once after enabling it.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
 
                 Button("I'll do this later", action: onContinue)
                     .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 56)
+        }
+        .onAppear {
+            appState.refreshKeyboardStatus()
+            pollTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { _ in
+                appState.refreshKeyboardStatus()
+            }
+        }
+        .onDisappear {
+            pollTimer?.invalidate()
         }
     }
 }
