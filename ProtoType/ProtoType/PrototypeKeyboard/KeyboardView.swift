@@ -60,7 +60,9 @@ struct ProtoTypeKeyboardView: View {
                     // TEMP build marker: shows the installed build number so we can
                     // verify which code is actually live on device. Remove later.
                     .overlay(alignment: .trailing) {
-                        Text("b\(Self.buildNumber)")
+                        // TEMP: also show the field's autocap type the keyboard reads
+                        // (0=none 1=words 2=sentences 3=all). Remove with the marker.
+                        Text("b\(Self.buildNumber) a\(proxy?.autocapitalizationType.rawValue ?? -1)")
                             .font(.system(size: 9))
                             .foregroundStyle(.secondary)
                             .padding(.trailing, 4)
