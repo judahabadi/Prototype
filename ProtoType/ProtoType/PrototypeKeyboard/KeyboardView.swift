@@ -57,6 +57,9 @@ struct ProtoTypeKeyboardView: View {
             if shouldPredict {
                 predictionBar
                     .frame(height: Self.barHeight)
+                    // TEMP diagnostic tint: marks the exact bounds/height of OUR bar
+                    // so we can see where it sits vs where the words land. Remove later.
+                    .background(Color.blue.opacity(0.12))
                     // TEMP build marker: shows the installed build number so we can
                     // verify which code is actually live on device. Remove later.
                     .overlay(alignment: .trailing) {

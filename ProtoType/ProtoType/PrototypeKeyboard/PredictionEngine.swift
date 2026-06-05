@@ -27,6 +27,13 @@ final class PredictionEngine {
         "for","not","on","with","he","as","you","do","at","this"
     ]
 
+    /// Junk filter for suggestion sources: drop single-letter tokens that aren't
+    /// real one-letter words ("a"/"i"), e.g. the stray "s"/"t" ngram fragments.
+    private static func isUsable(_ word: String) -> Bool {
+        if word.count == 1 { return word == "a" || word == "i" }
+        return true
+    }
+
     func load(from: Language, to: Language) {
         let pairKey = "\(from.isoCode)_\(to.isoCode)"
         if pairKey == loadedPairKey { return }
@@ -80,7 +87,7 @@ final class PredictionEngine {
             var out: [Prediction] = []
             var seen = Set<String>()
             for w in nexts where out.count < limit {
-                guard seen.insert(w).inserted else { continue }
+                guard Self.isUsable(w), seen.insert(w).inserted else { continue }
                 out.append(Prediction(source: w, translation: dict[w] ?? "", highlighted: false, isLoading: false))
             }
             // Top up from the high-frequency fallback so we never return blanks.
@@ -114,7 +121,7 @@ final class PredictionEngine {
         var seen = Set<String>()
         for word in completions where out.count < limit {
             let key = word.lowercased()
-            guard !seen.contains(key) else { continue }
+            guard Self.isUsable(key), !seen.contains(key) else { continue }
             seen.insert(key)
             out.append(Prediction(source: word, translation: dict[key] ?? "", highlighted: false, isLoading: false))
         }
