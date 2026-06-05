@@ -74,10 +74,13 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
     /// case. Leaves a manual caps-lock alone. This is the sole case authority
     /// (KeyboardKit's own auto-capitalization is disabled in `viewDidLoad`).
     private func applyAutoCase() {
-        guard !state.keyboardContext.isCapsLocked else { return }
+        guard state.keyboardContext.keyboardCase != .capsLocked else { return }
         let before = textDocumentProxy.documentContextBeforeInput ?? ""
         let upper = Autocap.shouldUppercase(contextBefore: before, type: autocapitalizationType)
-        state.keyboardContext.keyboardCase = upper ? .capitalized : .lowercased
+        // A manual single-shift also reads as `.uppercased`; because this runs again
+        // on the next `textDidChange`, that shift naturally resets to lowercase after
+        // one letter — i.e. one-shot shift still works.
+        state.keyboardContext.keyboardCase = upper ? .uppercased : .lowercased
     }
 
     /// Adapt the layout to numeric field types so number/decimal/phone fields get
