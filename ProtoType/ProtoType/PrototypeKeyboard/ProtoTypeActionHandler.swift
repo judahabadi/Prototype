@@ -96,19 +96,22 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
     }
 
     /// Insert a single letter with the case we decide, not KeyboardKit's. Upper if
-    /// the user is holding shift / caps-lock (a manual `.uppercased`/`.capsLocked`
-    /// keyboard case) OR the shared `Autocap` rule says this position is a sentence
-    /// start; lowercase otherwise. This is the sole authority for inserted case, so
-    /// it can't disagree between Debug and Release the way KK's autocap did.
+    /// caps-lock is on OR the shared `Autocap` rule says this position is a sentence
+    /// start; lowercase otherwise. We deliberately do NOT trust a plain `.uppercased`
+    /// keyboard case: that's also what KeyboardKit's auto-capitalization sets, and
+    /// that auto-cap is exactly what misfires mid-sentence on a fresh Release build
+    /// (it was correct on the long-running local build, which is why caps looked
+    /// fixed locally but not on device). The document-context rule is build-stable.
+    /// Trade-off: a one-shot manual shift no longer forces a mid-word capital
+    /// (e.g. a proper noun typed mid-sentence) — caps-lock still does.
     private func insertCasedLetter(_ char: String) {
         let proxy = keyboardContext.textDocumentProxy
-        let manualUpper = keyboardContext.keyboardCase == .uppercased
-            || keyboardContext.keyboardCase == .capsLocked
+        let capsLocked = keyboardContext.keyboardCase == .capsLocked
         let auto = Autocap.shouldUppercase(
             contextBefore: proxy.documentContextBeforeInput ?? "",
             type: proxy.autocapitalizationType ?? .sentences
         )
-        proxy.insertText((manualUpper || auto) ? char.uppercased() : char.lowercased())
+        proxy.insertText((capsLocked || auto) ? char.uppercased() : char.lowercased())
     }
 
     /// Delete the whitespace and word immediately before the cursor in one step.
