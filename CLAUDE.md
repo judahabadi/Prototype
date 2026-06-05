@@ -5,6 +5,7 @@
 5. Don't touch unrelated code — if a file is not directly part of the current task, do not modify it. Ever.
 6. Flag uncertainty explicitly — if you're not confident about an approach, say so before proceeding. Confidence without certainty causes more damage than admitting a gap.
 7. Always push to main — every commit must be pushed to both the feature branch and main.
+8. Keep answers short and simple — lead with the answer or the fix. No long write-ups, no recaps of what I already know. A few lines, plain language. Expand only if asked.
 1. Think Before Coding
 Don't assume. Don't hide confusion. Surface tradeoffs.
 
