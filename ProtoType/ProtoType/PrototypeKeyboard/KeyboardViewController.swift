@@ -32,6 +32,13 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
 
         state.keyboardContext.locale = Locale(identifier: native.isoCode)
 
+        // Drive the shift/case state ourselves (see `applyAutoCase`). KeyboardKit's
+        // own auto-capitalization never sees our custom space/punctuation handling
+        // (we replace those actions), so it left the shift capitalized into the next
+        // word ("The To Car"). Disabling it makes our deterministic rule the sole
+        // authority, so the two can't fight over the case.
+        state.keyboardContext.settings.isAutocapitalizationEnabled = false
+
         let handler = ProtoTypeActionHandler(controller: self)
         handler.kbState = kbState
         handler.predictionEngine = predictionEngine
@@ -57,7 +64,20 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
         super.viewWillAppear(animated)
         reloadLexicon()
         syncKeyboardType()
+        applyAutoCase()
         kbState?.contextSignal += 1
+    }
+
+    /// Set the shift/case for the *next* keystroke from the live document context,
+    /// using the same rule that cases the suggestion chips. Capitalised at a
+    /// sentence start, lowercase mid-sentence — so a word after a space stays lower
+    /// case. Leaves a manual caps-lock alone. This is the sole case authority
+    /// (KeyboardKit's own auto-capitalization is disabled in `viewDidLoad`).
+    private func applyAutoCase() {
+        guard !state.keyboardContext.isCapsLocked else { return }
+        let before = textDocumentProxy.documentContextBeforeInput ?? ""
+        let upper = Autocap.shouldUppercase(contextBefore: before, type: autocapitalizationType)
+        state.keyboardContext.keyboardCase = upper ? .capitalized : .lowercased
     }
 
     /// Adapt the layout to numeric field types so number/decimal/phone fields get
@@ -84,6 +104,7 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
 
     override func textDidChange(_ textInput: UITextInput?) {
         super.textDidChange(textInput)
+        applyAutoCase()
         kbState?.contextSignal += 1
     }
 
@@ -91,9 +112,10 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
         super.selectionDidChange(textInput)
         kbState?.contextSignal += 1
         // When the cursor moves, re-sync the current word for the new position so
-        // the suggestion bar reflects where the cursor actually is. Case is left
-        // to KeyboardKit's own auto-capitalization.
+        // the suggestion bar reflects where the cursor actually is, and re-derive
+        // the case for wherever the cursor now sits.
         protoHandler?.syncToCursor()
+        applyAutoCase()
     }
 
     // MARK: - KeyboardProxy
