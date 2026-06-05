@@ -1,9 +1,10 @@
 1. Ask, don't assume — if something is unclear, ask before writing a single line. Never make silent assumptions.
-2. ask in multiple choice questions with options when ever possible 
-3. Simplest solution first — always implement the simplest thing that could work. Don't add abstractions that weren't requested. but also make recomendations 
-4. Don't touch unrelated code — if a file is not directly part of the current task, do not modify it. Ever.
-5. Flag uncertainty explicitly — if you're not confident about an approach, say so before proceeding. Confidence without certainty causes more damage than admitting a gap.
-6. Always push to main — every commit must be pushed to both the feature branch and main.
+2. ask in multiple choice questions with options when ever possible
+3. If i missed something, mention it 
+4. Simplest solution first — always implement the simplest thing that could work. Don't add abstractions that weren't requested. but also make recomendations 
+5. Don't touch unrelated code — if a file is not directly part of the current task, do not modify it. Ever.
+6. Flag uncertainty explicitly — if you're not confident about an approach, say so before proceeding. Confidence without certainty causes more damage than admitting a gap.
+7. Always push to main — every commit must be pushed to both the feature branch and main.
 1. Think Before Coding
 Don't assume. Don't hide confusion. Surface tradeoffs.
 
