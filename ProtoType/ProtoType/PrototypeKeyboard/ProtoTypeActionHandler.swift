@@ -106,12 +106,11 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
     /// (e.g. a proper noun typed mid-sentence) — caps-lock still does.
     private func insertCasedLetter(_ char: String) {
         let proxy = keyboardContext.textDocumentProxy
-        let capsLocked = keyboardContext.keyboardCase == .capsLocked
-        let auto = Autocap.shouldUppercase(
-            contextBefore: proxy.documentContextBeforeInput ?? "",
-            type: proxy.autocapitalizationType ?? .sentences
-        )
-        proxy.insertText((capsLocked || auto) ? char.uppercased() : char.lowercased())
+        // TEMP DIAGNOSTIC: force every typed letter lowercase to prove whether THIS
+        // path controls inserted case. If a sentence still shows mid-sentence
+        // capitals after this, the capitalization comes from elsewhere (handleSpace
+        // or KeyboardKit), not here. Restore the real rule once identified.
+        proxy.insertText(char.lowercased())
     }
 
     /// Delete the whitespace and word immediately before the cursor in one step.
