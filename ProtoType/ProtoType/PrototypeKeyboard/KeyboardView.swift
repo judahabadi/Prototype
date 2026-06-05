@@ -48,25 +48,31 @@ struct ProtoTypeKeyboardView: View {
     }
 
     var body: some View {
+        // Render our QuickType bar OUTSIDE KeyboardKit's toolbar slot. KK reserves
+        // a taller toolbar height than ours and re-asserts it when the keyboard is
+        // re-shown (e.g. switching keyboards and back), which pinned our short bar
+        // low and made it look tall. Owning the bar in our own VStack and giving KK
+        // an empty toolbar keeps the height fixed and the words vertically centred.
+        VStack(spacing: 0) {
+            if shouldPredict {
+                predictionBar
+                    .frame(height: Self.barHeight)
+                Rectangle()
+                    .fill(Color(uiColor: .separator))
+                    .frame(height: 0.5)
+            }
+            keyboard
+        }
+    }
+
+    private var keyboard: some View {
         KeyboardView(
             services: kkServices,
             buttonContent: { $0.view },
             buttonView: { $0.view },
             collapsedView: { $0.view },
             emojiKeyboard: { $0.view },
-            toolbar: { [self] _ in
-                if shouldPredict {
-                    VStack(spacing: 0) {
-                        predictionBar
-                            .frame(height: Self.barHeight)
-                        Rectangle()
-                            .fill(Color(uiColor: .separator))
-                            .frame(height: 0.5)
-                    }
-                } else {
-                    EmptyView()
-                }
-            }
+            toolbar: { _ in EmptyView() }
         )
         .keyboardCalloutActions { params in
             // Long-press accent popups (é, ñ, ü, ç…) for Latin-script languages,
