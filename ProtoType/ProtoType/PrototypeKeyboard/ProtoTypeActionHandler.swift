@@ -31,18 +31,24 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
         case (.release, .character(let char)):
             return { [weak self] controller in
                 guard let self else { standard?(controller); return }
-                // Let KeyboardKit insert the character and apply its own native
-                // auto-capitalization — we don't override the typed letter's case.
-                standard?(controller)
-                self.triggerHaptic()
                 let isLetter = char.count == 1 && (char.first?.isLetter ?? false)
                 if isLetter {
+                    // Insert the letter with OUR own deterministic case rather than
+                    // KeyboardKit's. KK's auto-capitalization depends on a persisted
+                    // setting that behaves differently between a fresh Release build
+                    // and a long-running Debug build, so mid-sentence words were
+                    // capitalized on TestFlight but not locally. Computing the case
+                    // here from the live document makes Debug and Release identical.
+                    self.insertCasedLetter(char)
+                    self.triggerHaptic()
                     // Re-derive the current word from the live document so it always
                     // reflects the actual cursor position (e.g. after moving the
                     // cursor into a previously typed word).
                     self.kbState.currentPartial = self.partialBeforeCursor()
                     self.updateLivePredictions()
                 } else {
+                    standard?(controller)
+                    self.triggerHaptic()
                     self.applySmartPunctuation(for: char)
                     self.kbState.currentPartial = ""
                     self.refreshNextWordPredictions()
@@ -87,6 +93,22 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
         default:
             return standard
         }
+    }
+
+    /// Insert a single letter with the case we decide, not KeyboardKit's. Upper if
+    /// the user is holding shift / caps-lock (a manual `.uppercased`/`.capsLocked`
+    /// keyboard case) OR the shared `Autocap` rule says this position is a sentence
+    /// start; lowercase otherwise. This is the sole authority for inserted case, so
+    /// it can't disagree between Debug and Release the way KK's autocap did.
+    private func insertCasedLetter(_ char: String) {
+        let proxy = keyboardContext.textDocumentProxy
+        let manualUpper = keyboardContext.keyboardCase == .uppercased
+            || keyboardContext.keyboardCase == .capsLocked
+        let auto = Autocap.shouldUppercase(
+            contextBefore: proxy.documentContextBeforeInput ?? "",
+            type: proxy.autocapitalizationType ?? .sentences
+        )
+        proxy.insertText((manualUpper || auto) ? char.uppercased() : char.lowercased())
     }
 
     /// Delete the whitespace and word immediately before the cursor in one step.
