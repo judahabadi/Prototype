@@ -39,6 +39,13 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
         // authority, so the two can't fight over the case.
         state.keyboardContext.settings.isAutocapitalizationEnabled = false
 
+        // Hide KeyboardKit's own autocomplete toolbar entirely. We render our own
+        // QuickType bar above the keyboard, and KK's toolbar reserved a height that
+        // changed across keyboard re-entry (small on first load, tall after swapping
+        // to another keyboard and back). With it disabled, KK reserves nothing and
+        // our bar is the sole, fixed-height bar.
+        state.autocompleteContext.settings.isToolbarEnabled = false
+
         let handler = ProtoTypeActionHandler(controller: self)
         handler.kbState = kbState
         handler.predictionEngine = predictionEngine
