@@ -42,6 +42,7 @@ struct TryItView: View {
 
                     TextEditor(text: $text)
                         .font(.body)
+                        .textInputAutocapitalization(.sentences)
                         .padding(.horizontal, 12)
                         .padding(.top, 8)
                         .scrollContentBackground(.hidden)
