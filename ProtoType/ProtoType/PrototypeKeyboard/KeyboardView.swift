@@ -6,7 +6,7 @@ import KeyboardKit
 struct ProtoTypeKeyboardView: View {
     /// Fixed height of the QuickType bar, tuned to Apple's native bar. Used both
     /// for the bar frame and each chip's row so content is always centred.
-    static let barHeight: CGFloat = 37
+    static let barHeight: CGFloat = 44
 
     @Bindable var state: KeyboardState
     weak var proxy: (any KeyboardProxy)?
@@ -57,9 +57,6 @@ struct ProtoTypeKeyboardView: View {
             if shouldPredict {
                 predictionBar
                     .frame(height: Self.barHeight)
-                    // TEMP diagnostic tint: marks the exact bounds/height of OUR bar
-                    // so we can see where it sits vs where the words land. Remove later.
-                    .background(Color.blue.opacity(0.12))
                     // TEMP build marker: shows the installed build number so we can
                     // verify which code is actually live on device. Remove later.
                     .overlay(alignment: .trailing) {
@@ -378,7 +375,27 @@ struct ProtoTypeKeyboardView: View {
         }
         let n = state.currentPartial.count
         for _ in 0..<n { proxy?.deleteBackward() }
-        proxy?.insertText(raw)
+        // Re-case a tapped word-suggestion to where it actually lands: capital at a
+        // sentence start, lowercase mid-sentence. The chip text itself can be
+        // capitalized (e.g. when first shown at a sentence start), so inserting it
+        // verbatim was capitalizing mid-sentence words. Translations keep their own
+        // casing.
+        let toInsert: String
+        if useTranslation {
+            toInsert = raw
+        } else {
+            let before = proxy?.documentContextBeforeInput ?? ""
+            let upper = Autocap.shouldUppercase(
+                contextBefore: before,
+                type: proxy?.autocapitalizationType ?? .sentences
+            )
+            if let f = raw.first {
+                toInsert = (upper ? f.uppercased() : f.lowercased()) + raw.dropFirst()
+            } else {
+                toInsert = raw
+            }
+        }
+        proxy?.insertText(toInsert)
         let after = proxy?.documentContextAfterInput
         if after == nil || !(after?.first?.isLetter ?? false) {
             proxy?.insertText(" ")
