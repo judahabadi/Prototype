@@ -57,6 +57,14 @@ struct ProtoTypeKeyboardView: View {
             if shouldPredict {
                 predictionBar
                     .frame(height: Self.barHeight)
+                    // TEMP build marker: shows the installed build number so we can
+                    // verify which code is actually live on device. Remove later.
+                    .overlay(alignment: .trailing) {
+                        Text("b\(Self.buildNumber)")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.secondary)
+                            .padding(.trailing, 4)
+                    }
                 Rectangle()
                     .fill(Color(uiColor: .separator))
                     .frame(height: 0.5)
@@ -64,6 +72,9 @@ struct ProtoTypeKeyboardView: View {
             keyboard
         }
     }
+
+    /// Installed build number (CFBundleVersion), stamped by `ci_post_clone.sh`.
+    static let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
 
     private var keyboard: some View {
         KeyboardView(
