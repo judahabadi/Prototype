@@ -54,12 +54,12 @@ struct ProtoTypeKeyboardView: View {
             buttonView: { $0.view },
             collapsedView: { $0.view },
             emojiKeyboard: { $0.view },
-            toolbar: { params in
+            toolbar: { _ in
                 Group {
                     if shouldPredict {
                         predictionBar
                     } else {
-                        params.view
+                        EmptyView()
                     }
                 }
             }
