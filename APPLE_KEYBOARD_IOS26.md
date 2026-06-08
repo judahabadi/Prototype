@@ -279,6 +279,14 @@ hard/paid), and **impossible** (the OS owns the surface — see §7).
 | B3 Dictation | ⏭️ Deferred |
 | B4 Caps-lock (double-tap shift) | ✅ In v1 (verify KeyboardKit provides it) |
 
+QuickType bar decision:
+- **Render chips inside KeyboardKit's own autocomplete toolbar** (feed our own
+  suggestions + restyle chips) instead of hand-rolling the bar. KeyboardKit sizes and
+  centers it consistently and it survives keyboard re-entry — this avoids the old build's
+  height-creep (44→37pt) and the centering that reverted after keyboard switches
+  (`memory.md:96-107`). Use KeyboardKit's **default height**; tune later only if it reads
+  off on device (screenshot-match if needed).
+
 Engine/scope decisions for the rebuild:
 - **Languages:** English only for v1.
 - **Translation:** offline local JSON only (no network / Full Access not required for translation).
