@@ -14,6 +14,17 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
     /// escalate from character deletion to whole-word deletion (Apple-style).
     private var backspaceRepeats = 0
 
+    /// A1 (undo-autocorrect): the most recent autocorrection applied on space,
+    /// as (what the user typed, what we replaced it with). Set only right after a
+    /// correction; the very next backspace reverts it. Cleared by any other input.
+    private var lastAutocorrection: (original: String, corrected: String)?
+
+    /// Set when a backspace press consumed an undo-autocorrect, so the matching
+    /// release skips KeyboardKit's standard delete (which would otherwise eat a
+    /// character of the restored word). Keeps A1 safe regardless of how KK splits
+    /// the delete across press/release.
+    private var skipNextBackspaceStandard = false
+
     override func action(
         for gesture: Keyboard.Gesture,
         on action: KeyboardAction
@@ -31,6 +42,7 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
         case (.release, .character(let char)):
             return { [weak self] controller in
                 guard let self else { standard?(controller); return }
+                self.lastAutocorrection = nil   // A1: only the very next backspace can undo
                 let isLetter = char.count == 1 && (char.first?.isLetter ?? false)
                 if isLetter {
                     // Let KeyboardKit insert the letter with its own auto-capitalized
@@ -60,7 +72,14 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
             // Reset the hold counter at the start of every backspace press so the
             // word-deletion escalation only kicks in on a sustained hold.
             return { [weak self] controller in
-                self?.backspaceRepeats = 0
+                guard let self else { standard?(controller); return }
+                self.backspaceRepeats = 0
+                // A1: a backspace immediately after an autocorrect reverts the whole
+                // correction instead of deleting a character (Apple behaviour).
+                if self.tryUndoAutocorrect() {
+                    self.skipNextBackspaceStandard = true
+                    return
+                }
                 standard?(controller)
             }
 
@@ -81,8 +100,14 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
 
         case (.release, .backspace):
             return { [weak self] controller in
-                standard?(controller)
-                guard let self else { return }
+                guard let self else { standard?(controller); return }
+                // Skip the standard delete on the release that pairs with an
+                // undo-autocorrect press, so the restored word isn't clipped.
+                if self.skipNextBackspaceStandard {
+                    self.skipNextBackspaceStandard = false
+                } else {
+                    standard?(controller)
+                }
                 self.backspaceRepeats = 0
                 self.triggerHaptic()
                 // Re-derive the current word from the live document so editing back
@@ -245,6 +270,7 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
         let raw = kbState.currentPartial
         let cleaned = raw.lowercased().trimmingCharacters(in: .punctuationCharacters)
         let proxy = keyboardContext.textDocumentProxy
+        lastAutocorrection = nil   // A1: reset; set below only if we autocorrect
 
         if cleaned.isEmpty {
             let before = proxy.documentContextBeforeInput ?? ""
@@ -281,6 +307,7 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
 
         var finalWord = cleaned
         var insertedWord = raw            // the word as it now reads in the document
+        var correctionOriginal: String?  // the typed word, when we autocorrect (A1)
         if currentNativeLanguage().isoCode == "en", let contraction = Self.englishContractions[cleaned] {
             // Apple-style contraction fix: ill -> I'll, dont -> don't, youre -> you're.
             // "I" contractions stay capital-I; the rest follow the sentence position.
@@ -297,6 +324,7 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
             for _ in 0..<raw.count { proxy.deleteBackward() }
             proxy.insertText(insertedWord)
             finalWord = correction.lowercased()
+            correctionOriginal = raw
         } else if currentNativeLanguage().isoCode == "en", isEnglishI(cleaned),
                   let f = raw.first, f.isLowercase {
             // Auto-capitalize the English pronoun "I" and its contractions ("i'm").
@@ -313,6 +341,9 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
             proxy.insertText(fixed)
             insertedWord = fixed
         }
+
+        // A1: record the autocorrection (post-fixups) so the next backspace can undo it.
+        lastAutocorrection = correctionOriginal.map { (original: $0, corrected: insertedWord) }
 
         proxy.insertText(" ")
         kbState.currentPartial = ""
@@ -362,6 +393,24 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
                 }
             }
         }
+    }
+
+    // MARK: - Undo autocorrect (Apple-parity A1)
+
+    /// If a correction was just applied and the document still ends with
+    /// "<corrected> ", replace it with the user's original typed word + space and
+    /// return true. The caller skips the standard delete for this backspace.
+    private func tryUndoAutocorrect() -> Bool {
+        guard let undo = lastAutocorrection else { return false }
+        lastAutocorrection = nil
+        let proxy = keyboardContext.textDocumentProxy
+        let suffix = undo.corrected + " "
+        guard (proxy.documentContextBeforeInput ?? "").hasSuffix(suffix) else { return false }
+        for _ in 0..<suffix.count { proxy.deleteBackward() }
+        proxy.insertText(undo.original + " ")
+        kbState.currentPartial = ""
+        refreshNextWordPredictions()
+        return true
     }
 
     // MARK: - Smart spacing & double-capital (Apple-parity A2/A3)
