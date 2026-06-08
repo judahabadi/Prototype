@@ -32,12 +32,14 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
 
         state.keyboardContext.locale = Locale(identifier: native.isoCode)
 
-        // KeyboardKit fully owns auto-capitalization and the typed-letter case.
-        // The action handler always delegates `.character`/`.space` to KeyboardKit's
-        // standard handler (it never inserts letters itself), so KeyboardKit's
-        // "capitalize at a sentence start, lowercase after a mid-sentence space"
-        // logic runs correctly. We do NOT disable it and we do NOT drive the case
-        // ourselves — that two-writer setup was the old mid-sentence-capital bug.
+        // We drive the shift/case ourselves (see `applyAutoCase`). Our custom action
+        // handler replaces `.space`/`.character`, so KeyboardKit's own autocap
+        // post-processing never runs — leaving it enabled does nothing useful and
+        // risks a late async pass fighting us. Disable it and make `applyAutoCase`
+        // the sole, deterministic case authority (capital at a sentence start,
+        // lowercase after a mid-sentence space). This is the fix for the
+        // every-word-capitalized bug.
+        state.keyboardContext.settings.isAutocapitalizationEnabled = false
 
         // Hide KeyboardKit's own autocomplete toolbar entirely. We render our own
         // QuickType bar above the keyboard, and KK's toolbar reserved a height that
@@ -71,7 +73,21 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
         super.viewWillAppear(animated)
         reloadLexicon()
         syncKeyboardType()
+        applyAutoCase()
         kbState?.contextSignal += 1
+    }
+
+    /// Set the shift/case for the next keystroke from the live document context:
+    /// capital at a sentence start, lowercase mid-sentence. This is the sole case
+    /// authority (KeyboardKit's own autocap is disabled in `viewDidLoad`, and our
+    /// action handler bypasses KK's autocap). A manual caps-lock is left alone; a
+    /// one-shot manual shift naturally resets after one letter because this runs
+    /// again on the next `textDidChange`.
+    private func applyAutoCase() {
+        guard state.keyboardContext.keyboardCase != .capsLocked else { return }
+        let before = textDocumentProxy.documentContextBeforeInput ?? ""
+        let upper = Autocap.shouldUppercase(contextBefore: before, type: autocapitalizationType)
+        state.keyboardContext.keyboardCase = upper ? .uppercased : .lowercased
     }
 
     /// Adapt the layout to numeric field types so number/decimal/phone fields get
@@ -98,16 +114,17 @@ final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, 
 
     override func textDidChange(_ textInput: UITextInput?) {
         super.textDidChange(textInput)
+        applyAutoCase()
         kbState?.contextSignal += 1
     }
 
     override func selectionDidChange(_ textInput: UITextInput?) {
         super.selectionDidChange(textInput)
         kbState?.contextSignal += 1
-        // When the cursor moves, re-sync the current word for the new position so
-        // the suggestion bar reflects where the cursor actually is. KeyboardKit
-        // owns the shift/case for the new position.
+        // When the cursor moves, re-sync the current word and the case for the new
+        // position so the suggestion bar reflects where the cursor actually is.
         protoHandler?.syncToCursor()
+        applyAutoCase()
     }
 
     // MARK: - KeyboardProxy

@@ -3,6 +3,11 @@ import UIKit
 import KeyboardKit
 
 struct ProtoTypeKeyboardView: View {
+    /// QuickType bar height. Apple's isn't published; ~40pt reads close on iPhone.
+    /// Rendered in our own bar above the keys (KeyboardKit's toolbar slot is
+    /// disabled), so this is the single source of truth for the bar height.
+    static let barHeight: CGFloat = 40
+
     @Bindable var state: KeyboardState
     weak var proxy: (any KeyboardProxy)?
     let predictionEngine: PredictionEngine
@@ -41,10 +46,19 @@ struct ProtoTypeKeyboardView: View {
     }
 
     var body: some View {
-        // Render our QuickType chips INSIDE KeyboardKit's toolbar slot so KeyboardKit
-        // owns the bar height/placement (consistent across keyboard re-entry). The
-        // chips fill whatever height KK gives the toolbar.
-        keyboard
+        // Render our QuickType bar in our own VStack above the keys. KeyboardKit's
+        // toolbar slot is disabled (see KeyboardViewController), so rendering into
+        // it shows nothing — this owns the bar with a fixed height instead.
+        VStack(spacing: 0) {
+            if shouldPredict {
+                predictionBar
+                    .frame(height: Self.barHeight)
+                Rectangle()
+                    .fill(Color(uiColor: .separator))
+                    .frame(height: 0.5)
+            }
+            keyboard
+        }
     }
 
     private var keyboard: some View {
@@ -54,15 +68,7 @@ struct ProtoTypeKeyboardView: View {
             buttonView: { $0.view },
             collapsedView: { $0.view },
             emojiKeyboard: { $0.view },
-            toolbar: { _ in
-                Group {
-                    if shouldPredict {
-                        predictionBar
-                    } else {
-                        EmptyView()
-                    }
-                }
-            }
+            toolbar: { _ in EmptyView() }
         )
         .keyboardCalloutActions { params in
             // Long-press accent popups (é, ñ, ü, ç…) for Latin-script languages,
