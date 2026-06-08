@@ -50,6 +50,7 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
                     standard?(controller)
                     self.triggerHaptic()
                     self.applySmartPunctuation(for: char)
+                    self.removeSpaceBeforePunctuation(char)
                     self.kbState.currentPartial = ""
                     self.refreshNextWordPredictions()
                 }
@@ -304,6 +305,15 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
             proxy.insertText(insertedWord)
         }
 
+        // A3: fix an accidental double-capital (THe -> The) on the committed word.
+        // `insertedWord` is exactly what sits in the document right now, so we can
+        // replace it. All-caps acronyms (USA) keep their case (third char upper).
+        if let fixed = Self.fixedDoubleCapital(insertedWord), fixed != insertedWord {
+            for _ in 0..<insertedWord.count { proxy.deleteBackward() }
+            proxy.insertText(fixed)
+            insertedWord = fixed
+        }
+
         proxy.insertText(" ")
         kbState.currentPartial = ""
 
@@ -352,6 +362,34 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
                 }
             }
         }
+    }
+
+    // MARK: - Smart spacing & double-capital (Apple-parity A2/A3)
+
+    /// A2: drop a space sitting before sentence punctuation, so "word ," becomes
+    /// "word," (e.g. when a tapped suggestion left a trailing space). Runs after
+    /// the punctuation has been inserted by KeyboardKit.
+    private func removeSpaceBeforePunctuation(_ char: String) {
+        guard let c = char.first, ",.!?;:".contains(c) else { return }
+        let proxy = keyboardContext.textDocumentProxy
+        let before = proxy.documentContextBeforeInput ?? ""
+        guard before.hasSuffix(String(c)) else { return }
+        let withoutPunct = before.dropLast()
+        guard withoutPunct.hasSuffix(" "),
+              let prev = withoutPunct.dropLast().last, prev.isLetter || prev.isNumber else { return }
+        proxy.deleteBackward()        // remove the punctuation
+        proxy.deleteBackward()        // remove the space before it
+        proxy.insertText(String(c))   // re-insert the punctuation
+    }
+
+    /// A3: "THe" -> "The". Returns the fixed word, or nil when the word isn't an
+    /// accidental double-capital (first two letters uppercase, third lowercase).
+    /// All-caps acronyms ("USA") are left alone because their third char is upper.
+    static func fixedDoubleCapital(_ word: String) -> String? {
+        let chars = Array(word)
+        guard chars.count >= 3,
+              chars[0].isUppercase, chars[1].isUppercase, chars[2].isLowercase else { return nil }
+        return String(chars[0]) + String(chars[1]).lowercased() + String(chars[2...])
     }
 
     // MARK: - Smart punctuation (quotes & dashes)
