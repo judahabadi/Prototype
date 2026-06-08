@@ -1,10 +1,32 @@
 # Features
 
+> **v1 rebuild (current).** The keyboard was rebuilt on free KeyboardKit with a
+> permissive engine stack. Key changes from the original build:
+> - **Autocapitalization is owned entirely by KeyboardKit** — typed letters
+>   delegate to KeyboardKit's standard handler, which recomputes case from the
+>   document context (fixes the mid-sentence-capital bug). We no longer drive case.
+> - **Translation is offline-only** — local bundled JSON dictionaries; the Apple
+>   Translation session and the MyMemory web fallback were removed.
+> - **Engines** live in `Shared/Engines/` (used by app, extension, and tests):
+>   `AutocorrectEngine` (UITextChecker + keyboard-distance re-ranking, fixes
+>   `wint→wont`), `NextWordEngine` (Norvig bigram + backoff), `TranslationEngine`
+>   (offline JSON). Public-domain Norvig `count_1w` data ships as `unigrams_en.txt`.
+> - **Suggestion chips** show a book-style gloss `word (translation)`; tap inserts
+>   the word, long-press inserts the translation; the whole chip row scrolls as one
+>   unit when content is long. Slot 0 keeps the committed word after space.
+> - **Apple-parity additions:** A1 undo-autocorrect (a backspace right after a
+>   correction reverts it), A2 smart spacing (`word ,`→`word,`), A3 double-capital
+>   fix (`THe`→`The`).
+> - **v1 scope:** English-focused typing; iPhone-style `123` layout (no number row);
+>   swipe typing, dictation, custom emoji plane, and predictive emoji are deferred.
+>
+> Some bullets below describe the original build and may be partly superseded.
+
 ## What the keyboard does
 
 ### Core
 
-- **Live translation chip** — after typing a word and pressing space, the first prediction chip shows the word with its translation in the target language. Translation is looked up immediately from the local dictionary, then updated asynchronously via Apple Translation or MyMemory if not found locally.
+- **Live translation chip** — after typing a word and pressing space, the first prediction chip shows the word with its translation in the target language, looked up from the local bundled dictionary (offline only; no network fallback in the v1 rebuild).
 - **Next-word predictions** — slots 1 and 2 show the most likely next words based on bigram/trigram statistics, filtered to exclude words already used nearby in the current document.
 - **Autocorrect** — `AutocorrectService` corrects typos before the word is committed. Applied on space, after lexicon expansion, before translation.
 - **iOS text replacements** — checks `UIInputViewController.requestSupplementaryLexicon` on load and appearance. User's text replacements (e.g. `omw` → `On my way!`) are expanded on space, taking priority over autocorrect.
@@ -12,7 +34,7 @@
 ### Input behavior
 
 - **Character preview popup** — pressing a letter key shows a native-style popup bubble with the uppercase letter; releasing inserts the character and dismisses the popup.
-- **Autocap** — respects `autocapitalizationType` from the host field (none / words / sentences / all characters).
+- **Autocap** — owned by KeyboardKit (it respects the field's `autocapitalizationType` and recomputes case from context). The v1 rebuild no longer drives case itself.
 - **Field-aware layout** — reads `keyboardType` from the host field and switches layout:
   - `.numberPad`, `.decimalPad`, `.phonePad` → numeric-only layout
   - `.URL` → adds `.com` and `/` keys to space row
@@ -30,7 +52,7 @@
 
 - **Sound** — `UIDevice.current.playInputClick()` + `UIInputViewAudioFeedback` conformance. Automatically respects Settings → Sounds & Haptics → Keyboard Clicks.
 - **Haptics** — deliberately removed. iOS has no public API to read the "Keyboard Feedback › Haptic" system toggle, so haptics are suppressed entirely rather than ignoring the user's preference.
-- **Open Access** — declared in the extension Info.plist (`RequestsOpenAccess: true`). Required for the MyMemory API fallback.
+- **Open Access** — declared in the extension Info.plist (`RequestsOpenAccess: true`). No longer required for translation (offline-only in the v1 rebuild); still enables haptics/full-access behaviours.
 - **Paste chip** — when the pasteboard has a string, a "Paste" chip appears in the prediction bar (iOS 16+).
 - **Dark mode** — when the host app requests `.dark` keyboard appearance, the keyboard overrides to a dark color scheme regardless of system setting.
 - **Memory pressure** — `didReceiveMemoryWarning()` evicts the `TranslationService` word cache and the `PredictionEngine` in-memory data to avoid the OS killing the extension.

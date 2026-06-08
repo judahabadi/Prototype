@@ -137,3 +137,56 @@ Compounding bug: even when it existed, the script was at the **repo root**. Xcod
 
 Fix: restored `ci_post_clone.sh` at `ProtoType/ProtoType/ci_scripts/` (correct location), executable (mode 100755), stamping `CURRENT_PROJECT_VERSION = $CI_BUILD_NUMBER` into the pbxproj on every Xcode Cloud build. After this merges and an Xcode Cloud build runs, TestFlight should show a NEW build number/date; install it, then remove + re-add the keyboard (iOS caches the .appex). Only then do the centering/capitalization fixes actually reach the device.
 Assumption flagged: this assumes the user installs via TestFlight/Xcode Cloud (strongly implied by commit `15ff7ba` and prior memory). If they build locally from Xcode instead, the build-number issue is irrelevant and we'd look at target membership / scheme next.
+
+---
+
+## 2026-06-08
+
+### Keyboard rebuild (branch `claude/keen-franklin-1OEEj`, PR #33)
+
+Decision: rebuild the keyboard on free KeyboardKit with a permissive engine stack,
+keeping all Xcode infra (signing, bundle IDs, App Group, `ci_scripts`, entitlements)
+and git history; rewrite the keyboard source. All design decisions are recorded in
+`APPLE_KEYBOARD_IOS26.md` §9.
+
+**Architecture finding:** the project uses Xcode 16 **file-system-synchronized groups**
+(`PBXFileSystemSynchronizedRootGroup`), so new files in a synced folder auto-compile —
+no `project.pbxproj` editing needed. `Shared/` is a member of both the app and the
+extension targets, and the test target `@testable import ProtoType`s the app, so engine
+code placed in `Shared/Engines/` is usable by all three and unit-testable.
+
+**Engines (`Shared/Engines/`, with `ProtoTypeTests/EngineTests.swift`):**
+- `AutocorrectEngine` — UITextChecker detection + candidate words re-ranked by
+  keyboard-key distance (fixes `wint→wont`, which frequency ranking alone does not).
+- `NextWordEngine` — bigram + stupid-backoff + prefix completions; consumes the bundled
+  `ngrams_en.json` (top-5/head) and `unigrams_en.txt` (public-domain Norvig `count_1w`,
+  top-50k alpha words). No SymSpell (it wouldn't fix `wint→wont` and adds a dependency).
+- `TranslationEngine` — offline local-JSON lookup + lemma fallback.
+
+**Keyboard behaviour changes:**
+- KeyboardKit fully owns autocap; typed letters delegate to its standard handler
+  (removed our `insertCasedLetter`/`applyAutoCase`/autocap-disable). This is the real
+  fix for the long-standing mid-sentence-capital bug — the old build replaced `.space`/
+  `.character` and starved KeyboardKit's own case logic.
+- Translation is offline-only: removed the Apple Translation session + MyMemory fallback
+  from `TranslationService` and the Apple Translation machinery from `KeyboardView`.
+- Chips: `word (translation)` parentheses gloss (translation dimmed); tap = word,
+  long-press = translation; the whole chip row scrolls as one unit when long; slot 0
+  keeps the committed word after space. Removed the temp build-number marker.
+- Apple-parity: A1 undo-autocorrect (backspace right after a correction reverts it, via a
+  skip-flag so the paired release can't clip the restored word), A2 smart spacing
+  (`word ,`→`word,`), A3 double-capital fix (`THe`→`The`, acronyms preserved).
+
+**Deferred / verify-on-device:** A4 abbreviation-aware autocap and B4 caps-lock are left to
+on-device verification (KeyboardKit likely handles them now that it owns case); A5 predictive
+emoji, B1 swipe typing, B3 dictation, custom emoji plane are out of v1.
+
+**Kept pragmatically (flagged):** chips still render in our own bar (not KeyboardKit's
+toolbar slot) and smart punctuation still uses the existing custom code — both compile and
+work; switching to the literal KeyboardKit versions was deferred to avoid blind rewrites of
+the binary-distributed KeyboardKit 10.5.1 API. The old `PredictionEngine`/`AutocorrectService`
+remain wired (functionally equal to the new Shared engines); a full swap is optional cleanup.
+
+**Note:** `NOTICES.md` added (KeyboardKit MIT, Norvig public domain). The temporary
+`bypassPaywallForTesting` flag merged earlier (PR #32) is still on `main` — set it back to
+false before shipping.
