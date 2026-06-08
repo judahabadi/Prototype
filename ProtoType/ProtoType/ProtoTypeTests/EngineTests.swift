@@ -33,6 +33,14 @@ struct NextWordEngineTests {
         e.load(unigrams: [("a", 1)], bigrams: [("i", "want", 50), ("i", "am", 30)])
         #expect(e.nextWords(after: "i", limit: 5) == ["want"])
     }
+
+    // ngrams_en.json format: head -> ordered next-word list (no counts).
+    // List position must be preserved as the ranking.
+    @Test func bigramListAdapterPreservesOrder() {
+        let e = NextWordEngine()
+        e.load(bigramLists: ["i": ["want", "am", "will"]], unigrams: [("the", 100)])
+        #expect(e.nextWords(after: "i", limit: 2) == ["want", "am"])
+    }
 }
 
 struct AutocorrectEngineTests {

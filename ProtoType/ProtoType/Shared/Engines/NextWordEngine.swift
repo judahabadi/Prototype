@@ -32,9 +32,50 @@ final class NextWordEngine {
         for (head, next, count) in bigrams {
             grouped[head.lowercased(), default: []].append((next.lowercased(), count))
         }
+        self.bigrams = [:]
         for (head, list) in grouped {
             self.bigrams[head] = Array(list.sorted { $0.count > $1.count }.prefix(topKPerHead))
         }
+    }
+
+    /// Load bigrams from the project's `ngrams_*.json` format — head word → an
+    /// ordered list of likely next words (already sorted, no counts). List
+    /// position becomes a descending pseudo-count. Unigrams come from a separate
+    /// frequency list (the Norvig `count_1w` data).
+    func load(bigramLists: [String: [String]], unigrams: [(String, Int)]) {
+        self.unigrams = unigrams
+            .map { (word: $0.0.lowercased(), count: $0.1) }
+            .sorted { $0.count > $1.count }
+        self.bigrams = [:]
+        for (head, nexts) in bigramLists {
+            let scored = nexts.enumerated().map {
+                (word: $0.element.lowercased(), count: nexts.count - $0.offset)
+            }
+            self.bigrams[head.lowercased()] = Array(scored.prefix(topKPerHead))
+        }
+    }
+
+    /// Build the English engine from the bundled `ngrams_en.json` (bigrams,
+    /// top-5 next words per head) and `unigrams_en.txt` (public-domain Norvig
+    /// `count_1w` frequency list, trimmed). Returns nil if a resource is missing.
+    static func english(in bundle: Bundle = .main) -> NextWordEngine? {
+        guard let ngramsURL = bundle.url(forResource: "ngrams_en", withExtension: "json"),
+              let unigramURL = bundle.url(forResource: "unigrams_en", withExtension: "txt"),
+              let ngramsData = try? Data(contentsOf: ngramsURL),
+              let lists = try? JSONDecoder().decode([String: [String]].self, from: ngramsData),
+              let unigramText = try? String(contentsOf: unigramURL, encoding: .utf8)
+        else { return nil }
+
+        var unigrams: [(String, Int)] = []
+        for line in unigramText.split(separator: "\n") {
+            let parts = line.split(separator: "\t")
+            if parts.count == 2, let count = Int(parts[1]) {
+                unigrams.append((String(parts[0]), count))
+            }
+        }
+        let engine = NextWordEngine()
+        engine.load(bigramLists: lists, unigrams: unigrams)
+        return engine
     }
 
     /// Load from Norvig-format tab-separated text:
