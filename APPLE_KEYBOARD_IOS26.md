@@ -265,6 +265,31 @@ hard/paid), and **impossible** (the OS owns the surface — see §7).
 > Priority call: **A1–A5 are the must-adds** that make typing *feel* like Apple, are all
 > doable, and A4 fixes a live bug. **B1 (swipe)** is the big strategic decision.
 
+### v1 decisions (locked)
+
+| Item | Decision |
+|---|---|
+| A1 Undo-autocorrect on backspace | ✅ In v1 |
+| A2 Smart spacing | ✅ In v1 |
+| A3 Double-capital fix | ✅ In v1 |
+| A4 Abbreviation-aware autocap | ✅ In v1 (fixes the reported caps bug) |
+| A5 Predictive emoji | ⏭️ Deferred |
+| B1 Swipe / glide typing | ⏭️ Deferred (not buying KeyboardKit Pro yet) |
+| B2 Emoji | Globe → system emoji keyboard (no custom plane) |
+| B3 Dictation | ⏭️ Deferred |
+| B4 Caps-lock (double-tap shift) | ✅ In v1 (verify KeyboardKit provides it) |
+
+Engine/scope decisions for the rebuild:
+- **Languages:** English only for v1.
+- **Translation:** offline local JSON only (no network / Full Access not required for translation).
+- **Autocorrect:** Apple `UITextChecker` as the primary detector + candidate source,
+  re-ranked by word frequency (Norvig `count_1w.txt`) + keyboard-key distance. **No SymSpell.**
+- **Next-word:** Norvig `count_2w.txt` bigram lookup with stupid-backoff to top unigrams.
+- **Autocap:** single authority (our `Autocap`), KeyboardKit's own autocap disabled.
+- **Infra:** keep the existing Xcode project, signing, bundle IDs, App Group, `ci_scripts`,
+  entitlements; rewrite only the keyboard Swift source. Keep git history. One branch,
+  phased commits.
+
 ---
 
 ## Sources
