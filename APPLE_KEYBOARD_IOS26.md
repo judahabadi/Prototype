@@ -298,7 +298,10 @@ QuickType bar decision:
 - **Chip tap behavior:** a **tap inserts the native word**; a **long-press or double-tap
   inserts the translation**. (Preserves Apple's "tap = your word" contract while still
   letting the user commit the translation deliberately.)
-- **Translation display:** inline on one line with a separator — `hola · hello`.
+- **Translation display:** one line, **translation in parentheses** — `hola (hello)` —
+  the phrasebook/book convention for glossing a word (no `·` dot). Word in normal weight;
+  the parenthesized translation may be slightly dimmed. Chips themselves are divided by
+  KeyboardKit's standard vertical hairline.
 - **Smart punctuation:** use **KeyboardKit's built-in** smart punctuation (double-space→`. `,
   curly quotes, `--`→`—`) via its settings — **not** by replacing the space action. Keeps the
   "KeyboardKit owns typing" rule intact.
@@ -314,6 +317,8 @@ Engine/scope decisions for the rebuild:
 - **Autocorrect:** Apple `UITextChecker` as the primary detector + candidate source,
   re-ranked by word frequency (Norvig `count_1w.txt`) + keyboard-key distance. **No SymSpell.**
 - **Next-word:** Norvig `count_2w.txt` bigram lookup with stupid-backoff to top unigrams.
+- **Layout:** iPhone-style — no permanent number row; numbers/symbols via the `123` key
+  (KeyboardKit default). Matches Apple's iPhone keyboard.
 - **Autocap:** **KeyboardKit fully owns** typing, shift state, and auto-capitalization.
   The rebuild must **never replace `.space`/`.character` actions** the way the old build did
   (that bypassed KeyboardKit's "lowercase after mid-sentence space" and caused the bug —
