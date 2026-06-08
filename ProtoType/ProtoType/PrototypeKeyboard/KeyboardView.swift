@@ -3,12 +3,6 @@ import UIKit
 import KeyboardKit
 
 struct ProtoTypeKeyboardView: View {
-    /// Fixed height of the QuickType bar, tuned to Apple's native bar. Used both
-    /// for the bar frame and each chip's row so content is always centred.
-    /// Apple's bar isn't a published value; ~37pt reads close on iPhone. Easy to
-    /// nudge here if it still looks off on device.
-    static let barHeight: CGFloat = 37
-
     @Bindable var state: KeyboardState
     weak var proxy: (any KeyboardProxy)?
     let predictionEngine: PredictionEngine
@@ -47,21 +41,10 @@ struct ProtoTypeKeyboardView: View {
     }
 
     var body: some View {
-        // Render our QuickType bar OUTSIDE KeyboardKit's toolbar slot. KK reserves
-        // a taller toolbar height than ours and re-asserts it when the keyboard is
-        // re-shown (e.g. switching keyboards and back), which pinned our short bar
-        // low and made it look tall. Owning the bar in our own VStack and giving KK
-        // an empty toolbar keeps the height fixed and the words vertically centred.
-        VStack(spacing: 0) {
-            if shouldPredict {
-                predictionBar
-                    .frame(height: Self.barHeight)
-                Rectangle()
-                    .fill(Color(uiColor: .separator))
-                    .frame(height: 0.5)
-            }
-            keyboard
-        }
+        // Render our QuickType chips INSIDE KeyboardKit's toolbar slot so KeyboardKit
+        // owns the bar height/placement (consistent across keyboard re-entry). The
+        // chips fill whatever height KK gives the toolbar.
+        keyboard
     }
 
     private var keyboard: some View {
@@ -71,7 +54,15 @@ struct ProtoTypeKeyboardView: View {
             buttonView: { $0.view },
             collapsedView: { $0.view },
             emojiKeyboard: { $0.view },
-            toolbar: { _ in EmptyView() }
+            toolbar: { params in
+                Group {
+                    if shouldPredict {
+                        predictionBar
+                    } else {
+                        params.view
+                    }
+                }
+            }
         )
         .keyboardCalloutActions { params in
             // Long-press accent popups (é, ñ, ü, ç…) for Latin-script languages,
@@ -238,7 +229,7 @@ struct ProtoTypeKeyboardView: View {
                     .lineLimit(1)
             }
             .padding(.horizontal, 8)
-            .frame(height: Self.barHeight)
+            .frame(maxHeight: .infinity)
         }
         .defaultScrollAnchor(.leading)
         .scrollBounceBehavior(.basedOnSize)
@@ -274,7 +265,7 @@ struct ProtoTypeKeyboardView: View {
                 }
             }
             .padding(.horizontal, 8)
-            .frame(height: Self.barHeight)
+            .frame(maxHeight: .infinity)
         }
         .defaultScrollAnchor(centered ? .center : .leading)
         .scrollBounceBehavior(.basedOnSize)
