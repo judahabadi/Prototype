@@ -25,6 +25,15 @@ final class KeyboardViewController: KeyboardInputViewController, UIInputViewAudi
         super.viewDidLoad()
 
         state.keyboardContext.locale = Locale(identifier: native.isoCode)
+
+        // Make sure autocomplete + the toolbar are on. These settings persist in
+        // UserDefaults, and the previous build wrote `isToolbarEnabled = false`,
+        // which kept the QuickType bar hidden even after the rewrite. Force them
+        // true so our bar shows and KeyboardKit runs our suggestion service.
+        state.autocompleteContext.settings.isAutocompleteEnabled = true
+        state.autocompleteContext.settings.isToolbarEnabled = true
+        state.autocompleteContext.settings.isAutocorrectEnabled = true
+
         loadEngines()
         installAutocompleteService()
     }
