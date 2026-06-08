@@ -2,217 +2,79 @@ import UIKit
 import SwiftUI
 import KeyboardKit
 
-final class KeyboardViewController: KeyboardInputViewController, KeyboardProxy, UIInputViewAudioFeedback {
+/// Native KeyboardKit keyboard. KeyboardKit owns all typing, capitalization, and
+/// autocorrect; we only plug in a custom autocomplete service (Norvig + offline
+/// translation) so the bar shows our suggestions. There is no custom action
+/// handler — that's what kept breaking capitalization.
+final class KeyboardViewController: KeyboardInputViewController, UIInputViewAudioFeedback {
 
     var kbState: KeyboardState!
-    var predictionEngine: PredictionEngine!
-    private var lexicon: [String: String] = [:]
-    /// Held weakly — `services.actionHandler` owns it. Used to re-sync the
-    /// current word to the cursor when the selection moves.
-    private weak var protoHandler: ProtoTypeActionHandler?
+    private var nextWordEngine = NextWordEngine()
+    private let translationEngine = TranslationEngine()
+    private var didLoadNextWord = false
 
     override func viewDidLoad() {
-        // Initialize our state before calling super — KK may call viewWillSetupKeyboardView
-        // from within super.viewDidLoad(), so kbState/predictionEngine must be ready first.
+        // Initialize state before super, since super may trigger view setup.
         let defaults = AppGroup.defaults
         defaults.set(true, forKey: "keyboardDidLoad")
-        let nativeRaw = defaults.string(forKey: AppGroup.nativeKey) ?? Language.english.rawValue
-        let targetRaw = defaults.string(forKey: AppGroup.targetKey) ?? Language.spanish.rawValue
-        let native = Language(rawValue: nativeRaw) ?? .english
-        var target = Language(rawValue: targetRaw) ?? .spanish
-        if target == native {
-            target = native == .english ? .spanish : .english
-        }
+        let native = Language(rawValue: defaults.string(forKey: AppGroup.nativeKey) ?? "") ?? .english
+        var target = Language(rawValue: defaults.string(forKey: AppGroup.targetKey) ?? "") ?? .spanish
+        if target == native { target = (native == .english) ? .spanish : .english }
         kbState = KeyboardState(native: native, target: target)
-        predictionEngine = PredictionEngine()
-        predictionEngine.load(from: native, to: target)
-        kbState.predictions = predictionEngine.topPredictions()
 
         super.viewDidLoad()
 
         state.keyboardContext.locale = Locale(identifier: native.isoCode)
+        loadEngines()
+        installAutocompleteService()
+    }
 
-        // We drive the shift/case ourselves (see `applyAutoCase`). Our custom action
-        // handler replaces `.space`/`.character`, so KeyboardKit's own autocap
-        // post-processing never runs — leaving it enabled does nothing useful and
-        // risks a late async pass fighting us. Disable it and make `applyAutoCase`
-        // the sole, deterministic case authority (capital at a sentence start,
-        // lowercase after a mid-sentence space). This is the fix for the
-        // every-word-capitalized bug.
-        state.keyboardContext.settings.isAutocapitalizationEnabled = false
+    /// (Re)load the suggestion + translation data. Next-word data is the bundled
+    /// English Norvig set (loaded once); translation depends on the language pair.
+    private func loadEngines() {
+        if !didLoadNextWord, let english = NextWordEngine.english() {
+            nextWordEngine = english
+            didLoadNextWord = true
+        }
+        translationEngine.load(from: kbState.nativeLanguage, to: kbState.targetLanguage)
+    }
 
-        // Hide KeyboardKit's own autocomplete toolbar entirely. We render our own
-        // QuickType bar above the keyboard, and KK's toolbar reserved a height that
-        // changed across keyboard re-entry (small on first load, tall after swapping
-        // to another keyboard and back). With it disabled, KK reserves nothing and
-        // our bar is the sole, fixed-height bar.
-        state.autocompleteContext.settings.isToolbarEnabled = false
+    /// Install our Norvig-backed autocomplete service. KeyboardKit calls it on
+    /// every text change and applies autocorrect suggestions on space.
+    private func installAutocompleteService() {
+        services.autocompleteService = NorvigAutocompleteService(
+            locale: Locale(identifier: kbState.nativeLanguage.isoCode),
+            nextWord: nextWordEngine,
+            translation: translationEngine,
+            language: { [weak self] in self?.kbState.nativeLanguage ?? .english }
+        )
+    }
 
-        let handler = ProtoTypeActionHandler(controller: self)
-        handler.kbState = kbState
-        handler.predictionEngine = predictionEngine
-        handler.getLexicon = { [weak self] in self?.lexicon ?? [:] }
-        services.actionHandler = handler
-        protoHandler = handler
-
-        reloadLexicon()
+    /// Called from the language picker when the pair changes.
+    func reloadForLanguageChange() {
+        state.keyboardContext.locale = Locale(identifier: kbState.nativeLanguage.isoCode)
+        loadEngines()
+        installAutocompleteService()
     }
 
     override func viewWillSetupKeyboardView() {
         setupKeyboardView { controller in
             ProtoTypeKeyboardView(
                 state: self.kbState,
-                proxy: self,
-                predictionEngine: self.predictionEngine,
-                kkServices: controller.services
+                services: controller.services,
+                autocompleteContext: controller.state.autocompleteContext,
+                reloadEngines: { [weak self] in self?.reloadForLanguageChange() }
             )
         }
     }
 
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        reloadLexicon()
-        syncKeyboardType()
-        applyAutoCase()
-        kbState?.contextSignal += 1
-    }
-
-    /// Set the shift/case for the next keystroke from the live document context:
-    /// capital at a sentence start, lowercase mid-sentence. This is the sole case
-    /// authority (KeyboardKit's own autocap is disabled in `viewDidLoad`, and our
-    /// action handler bypasses KK's autocap). A manual caps-lock is left alone; a
-    /// one-shot manual shift naturally resets after one letter because this runs
-    /// again on the next `textDidChange`.
-    private func applyAutoCase() {
-        guard state.keyboardContext.keyboardCase != .capsLocked else { return }
-        let before = textDocumentProxy.documentContextBeforeInput ?? ""
-        let upper = Autocap.shouldUppercase(contextBefore: before, type: autocapitalizationType)
-        state.keyboardContext.keyboardCase = upper ? .uppercased : .lowercased
-    }
-
-    /// Adapt the layout to numeric field types so number/decimal/phone fields get
-    /// the numeric keyboard. Non-numeric types are left to KeyboardKit. Done on
-    /// appear only (not per-keystroke) so it never fights the symbols/numbers plane.
-    private func syncKeyboardType() {
-        switch textDocumentProxy.keyboardType {
-        case .numberPad?, .asciiCapableNumberPad?, .decimalPad?, .phonePad?:
-            state.keyboardContext.keyboardType = .numberPad
-        default:
-            break
-        }
-    }
-
-    private func reloadLexicon() {
-        requestSupplementaryLexicon { [weak self] lex in
-            var map: [String: String] = [:]
-            for entry in lex.entries {
-                map[entry.userInput.lowercased()] = entry.documentText
-            }
-            self?.lexicon = map
-        }
-    }
-
-    override func textDidChange(_ textInput: UITextInput?) {
-        super.textDidChange(textInput)
-        applyAutoCase()
-        kbState?.contextSignal += 1
-    }
-
-    override func selectionDidChange(_ textInput: UITextInput?) {
-        super.selectionDidChange(textInput)
-        kbState?.contextSignal += 1
-        // When the cursor moves, re-sync the current word and the case for the new
-        // position so the suggestion bar reflects where the cursor actually is.
-        protoHandler?.syncToCursor()
-        applyAutoCase()
-    }
-
-    // MARK: - KeyboardProxy
-
-    override func insertText(_ text: String) {
-        textDocumentProxy.insertText(text)
-    }
-
-    override func deleteBackward() {
-        textDocumentProxy.deleteBackward()
-    }
-
-    func playInputClick() {
-        UIDevice.current.playInputClick()
-    }
-
-    func textReplacement(for input: String) -> String? {
-        lexicon[input.lowercased()]
-    }
-
-    override func advanceToNextInputMode() {
-        super.advanceToNextInputMode()
-    }
-
-    override func dismissKeyboard() {
-        super.dismissKeyboard()
-    }
-
-    func adjustTextPosition(byCharacterOffset offset: Int) {
-        textDocumentProxy.adjustTextPosition(byCharacterOffset: offset)
-    }
-
-    func showInputModeList() {
-        handleInputModeList(from: view, with: UIEvent())
-    }
-
-    func requestExpandedContext(completion: @escaping (String, String) -> Void) {
-        let before = textDocumentProxy.documentContextBeforeInput ?? ""
-        let after = textDocumentProxy.documentContextAfterInput ?? ""
-        completion(before, after)
-    }
-
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
-        Task { await TranslationService.shared.evict() }
-        predictionEngine?.evict()
+        translationEngine.evict()
     }
 
-    override var needsInputModeSwitchKey: Bool { super.needsInputModeSwitchKey }
+    // MARK: - UIInputViewAudioFeedback
 
-    var documentContextBeforeInput: String? { textDocumentProxy.documentContextBeforeInput }
-    var documentContextAfterInput: String? { textDocumentProxy.documentContextAfterInput }
-    var selectedText: String? { textDocumentProxy.selectedText }
-    var returnKeyType: UIReturnKeyType { textDocumentProxy.returnKeyType ?? .default }
-    var keyboardType: UIKeyboardType { textDocumentProxy.keyboardType ?? .default }
-    var autocapitalizationType: UITextAutocapitalizationType { textDocumentProxy.autocapitalizationType ?? .sentences }
-    var autocorrectionType: UITextAutocorrectionType { textDocumentProxy.autocorrectionType ?? .default }
-    var spellCheckingType: UITextSpellCheckingType { textDocumentProxy.spellCheckingType ?? .default }
-    var isSecureTextEntry: Bool { textDocumentProxy.isSecureTextEntry ?? false }
-    var textContentType: UITextContentType? { textDocumentProxy.textContentType }
-    var enablesReturnKeyAutomatically: Bool { textDocumentProxy.enablesReturnKeyAutomatically ?? false }
-    var keyboardAppearance: UIKeyboardAppearance { textDocumentProxy.keyboardAppearance ?? .default }
-
+    func playInputClick() { UIDevice.current.playInputClick() }
     var enableInputClicksWhenVisible: Bool { true }
-}
-
-/// Single, shared auto-capitalization rule used by both the view controller
-/// (to drive KeyboardKit's shift state) and the action handler (to case
-/// suggestion chips), so the two can never disagree about what the case
-/// should be for a given document context.
-enum Autocap {
-    static func shouldUppercase(contextBefore: String, type: UITextAutocapitalizationType) -> Bool {
-        switch type {
-        case .allCharacters:
-            return true
-        case .none:
-            return false
-        case .words:
-            return contextBefore.isEmpty || (contextBefore.last?.isWhitespace ?? false)
-        case .sentences:
-            if contextBefore.isEmpty || contextBefore.hasSuffix("\n") { return true }
-            if contextBefore.hasSuffix(" ") {
-                let lastNonSpace = contextBefore.reversed().first(where: { $0 != " " })
-                return lastNonSpace.map { ".!?".contains($0) } ?? true
-            }
-            return false
-        @unknown default:
-            return false
-        }
-    }
 }

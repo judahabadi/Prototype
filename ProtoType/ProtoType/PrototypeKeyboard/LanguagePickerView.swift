@@ -2,7 +2,7 @@ import SwiftUI
 
 struct LanguagePickerView: View {
     @Bindable var state: KeyboardState
-    let predictionEngine: PredictionEngine
+    let reloadEngines: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var editing: Side = .native
@@ -96,15 +96,7 @@ struct LanguagePickerView: View {
             state.targetLanguage = lang
             defaults.set(lang.rawValue, forKey: AppGroup.targetKey)
         }
-        state.currentPartial = ""
-        let from = state.nativeLanguage
-        let to = state.targetLanguage
-        Task {
-            await TranslationService.shared.evict()
-        }
-        predictionEngine.evict()
-        predictionEngine.load(from: from, to: to)
-        state.predictions = predictionEngine.topPredictions()
+        reloadEngines()
         dismiss()
     }
 }
