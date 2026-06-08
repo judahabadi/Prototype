@@ -231,6 +231,42 @@ either once confirmed.
 
 ---
 
+## 9. Feature-parity checklist for the rebuild
+
+What Apple's stock keyboard does, and where our clone stands. Three buckets:
+**add** (Apple does it and a 3rd-party extension *can* too), **decide** (possible but
+hard/paid), and **impossible** (the OS owns the surface — see §7).
+
+### A. Must-add for v1 — Apple does these and we can
+
+| # | Behaviour | What Apple does | Status / note |
+|---|---|---|---|
+| A1 | **Undo-autocorrect on backspace** | One tap of delete after an autocorrect reverts the *whole* correction, not one character. _(observed, iOS 17+)_ | Not implemented. Highest-value recovery gesture. |
+| A2 | **Smart spacing (smart insert/delete)** | `word ,` → `word,` (drop space before punctuation); deleting a word cleans the stray double space; auto-space after punctuation. _(documented: `smartInsertDeleteType`)_ | Old build only half-did this; rebuild should own it. |
+| A3 | **Double-capital fix** | `THe` → `The`, `HEllo` → `Hello`. _(observed)_ | Not implemented. |
+| A4 | **Abbreviation-aware autocap** | Does **not** capitalize after `e.g.`, `3.5`, `U.S.` — only true sentence ends. _(observed)_ | **This is the reported caps bug.** Our `Autocap` treats every `.` as a sentence end. Must fix. |
+| A5 | **Predictive emoji** | Suggests 🍕 in the QuickType bar when you type "pizza". _(observed)_ | Not implemented. Easy win (word→emoji map). |
+
+### B. Decide — Apple has these, but they're hard or paid
+
+| # | Behaviour | Cost / blocker |
+|---|---|---|
+| B1 | **Swipe / glide typing (QuickPath)** | Apple's flagship feature. **Not in free KeyboardKit** — needs KeyboardKit Pro or a large custom build. Biggest single gap. |
+| B2 | **Emoji keyboard plane** | The full emoji grid. KeyboardKit can provide one; or lean on the globe key to the system emoji keyboard. |
+| B3 | **Dictation (mic button)** | Needs Open Access; architecture was ready in the old build, UI never built. |
+| B4 | **Caps-lock (double-tap shift)** | Apple has it. KeyboardKit *free* likely provides it — verify, don't assume. |
+
+### C. Impossible in a 3rd-party extension (do not attempt system-wide — see §7)
+
+- Grey **inline "ghost" prediction** inside the host field.
+- **Red spell-check underline** system-wide (works only inside *our own* app's text views).
+- The autocorrect/cursor **magnifier loupe** (our space-bar cursor slide is the workaround).
+
+> Priority call: **A1–A5 are the must-adds** that make typing *feel* like Apple, are all
+> doable, and A4 fixes a live bug. **B1 (swipe)** is the big strategic decision.
+
+---
+
 ## Sources
 
 - [Use predictive text on iPhone — Apple Support](https://support.apple.com/guide/iphone/use-predictive-text-iphd4ea90231/ios)
