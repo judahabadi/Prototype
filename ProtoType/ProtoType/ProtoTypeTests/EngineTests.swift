@@ -65,3 +65,18 @@ struct AutocorrectEngineTests {
         #expect(e.weightedDistance("wint", "wont") < e.weightedDistance("wint", "want"))
     }
 }
+
+struct TranslationEngineTests {
+
+    @Test func directLookupIsCaseInsensitive() {
+        let e = TranslationEngine()
+        e.loadDictionary(["hola": "hello"])
+        #expect(e.translation(for: "Hola") == "hello")
+    }
+
+    @Test func missingWordReturnsNil() {
+        let e = TranslationEngine()
+        e.loadDictionary(["hola": "hello"])
+        #expect(e.translation(for: "zzz") == nil)
+    }
+}
