@@ -272,7 +272,7 @@ hard/paid), and **impossible** (the OS owns the surface — see §7).
 | A1 Undo-autocorrect on backspace | ✅ In v1 |
 | A2 Smart spacing | ✅ In v1 |
 | A3 Double-capital fix | ✅ In v1 |
-| A4 Abbreviation-aware autocap | ✅ In v1 (fixes the reported caps bug) |
+| A4 Abbreviation-aware autocap | ⚠️ Only if KeyboardKit gets it wrong — KeyboardKit owns autocap now |
 | A5 Predictive emoji | ⏭️ Deferred |
 | B1 Swipe / glide typing | ⏭️ Deferred (not buying KeyboardKit Pro yet) |
 | B2 Emoji | Globe → system emoji keyboard (no custom plane) |
@@ -285,7 +285,12 @@ Engine/scope decisions for the rebuild:
 - **Autocorrect:** Apple `UITextChecker` as the primary detector + candidate source,
   re-ranked by word frequency (Norvig `count_1w.txt`) + keyboard-key distance. **No SymSpell.**
 - **Next-word:** Norvig `count_2w.txt` bigram lookup with stupid-backoff to top unigrams.
-- **Autocap:** single authority (our `Autocap`), KeyboardKit's own autocap disabled.
+- **Autocap:** **KeyboardKit fully owns** typing, shift state, and auto-capitalization.
+  The rebuild must **never replace `.space`/`.character` actions** the way the old build did
+  (that bypassed KeyboardKit's "lowercase after mid-sentence space" and caused the bug —
+  see `memory.md:122-128`); we only *layer* predictions/translation/smart-spacing on top.
+  Our custom `Autocap` layer is removed. A4 abbreviation fix is added **only if** KeyboardKit
+  mis-capitalizes after `e.g.`/`3.5` on device — verify before patching.
 - **Infra:** keep the existing Xcode project, signing, bundle IDs, App Group, `ci_scripts`,
   entitlements; rewrite only the keyboard Swift source. Keep git history. One branch,
   phased commits.
