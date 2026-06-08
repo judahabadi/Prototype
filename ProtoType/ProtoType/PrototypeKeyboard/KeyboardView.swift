@@ -1,6 +1,5 @@
 import SwiftUI
 import UIKit
-import Translation
 import KeyboardKit
 
 struct ProtoTypeKeyboardView: View {
@@ -12,8 +11,6 @@ struct ProtoTypeKeyboardView: View {
     weak var proxy: (any KeyboardProxy)?
     let predictionEngine: PredictionEngine
     let kkServices: Keyboard.Services
-
-    @State private var translationConfig: TranslationSession.Configuration?
 
     // Selection auto-translate (Feature 2)
     @State private var lastHandledSelection: String = ""
@@ -89,32 +86,7 @@ struct ProtoTypeKeyboardView: View {
         .sheet(isPresented: $state.showLanguagePicker) {
             LanguagePickerView(state: state, predictionEngine: predictionEngine)
         }
-        .onAppear {
-            updateTranslationConfig()
-        }
         .onChange(of: state.contextSignal) { handleSelectionChange() }
-        .onChange(of: state.nativeLanguage) { updateTranslationConfig() }
-        .onChange(of: state.targetLanguage) { updateTranslationConfig() }
-        .translationTask(translationConfig) { session in
-            TranslationService.shared.setSession(session)
-        }
-    }
-
-    private func updateTranslationConfig() {
-        let source = Locale.Language(identifier: state.nativeLanguage.appleTranslationLocale)
-        let target = Locale.Language(identifier: state.targetLanguage.appleTranslationLocale)
-        Task {
-            let status = await LanguageAvailability().status(from: source, to: target)
-            switch status {
-            case .installed, .supported:
-                translationConfig = TranslationSession.Configuration(source: source, target: target)
-            case .unsupported:
-                translationConfig = nil
-                TranslationService.shared.clearAppleSession()
-            @unknown default:
-                translationConfig = nil
-            }
-        }
     }
 
     private func lastContextWord() -> String {
