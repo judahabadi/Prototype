@@ -286,6 +286,13 @@ QuickType bar decision:
   height-creep (44→37pt) and the centering that reverted after keyboard switches
   (`memory.md:96-107`). Use KeyboardKit's **default height**; tune later only if it reads
   off on device (screenshot-match if needed).
+- **Long content scrolls, short content centers.** When chips fit, they're centered in the
+  bar; when a word/translation is too long for 3 chips, the bar scrolls horizontally instead
+  of truncating or shrinking. Must be conditional — the old build's unconditional `ScrollView`
+  pinned short content to the leading edge (the off-center bug, `memory.md:118-120`).
+- **Slot 0 persists after space.** When the user presses space, the left chip keeps showing
+  the word just committed plus its translation; it stays visible through space and only
+  switches to live word suggestions once the user types the first letter of the next word.
 
 Engine/scope decisions for the rebuild:
 - **Languages:** English only for v1.
