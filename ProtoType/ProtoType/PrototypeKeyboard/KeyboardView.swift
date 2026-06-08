@@ -5,7 +5,9 @@ import KeyboardKit
 struct ProtoTypeKeyboardView: View {
     /// Fixed height of the QuickType bar, tuned to Apple's native bar. Used both
     /// for the bar frame and each chip's row so content is always centred.
-    static let barHeight: CGFloat = 44
+    /// Apple's bar isn't a published value; ~37pt reads close on iPhone. Easy to
+    /// nudge here if it still looks off on device.
+    static let barHeight: CGFloat = 37
 
     @Bindable var state: KeyboardState
     weak var proxy: (any KeyboardProxy)?

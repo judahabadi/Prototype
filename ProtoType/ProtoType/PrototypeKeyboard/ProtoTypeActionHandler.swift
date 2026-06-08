@@ -33,9 +33,14 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
 
         switch (gesture, action) {
         case (.release, .space):
-            return { [weak self] _ in
-                guard let self else { return }
-                self.handleSpace()
+            return { [weak self] controller in
+                guard let self else { standard?(controller); return }
+                // Insert the trailing space via KeyboardKit's standard handler so KK's
+                // auto-capitalization runs (it lowercases the next word after a
+                // mid-sentence space). Inserting the space ourselves bypassed that —
+                // the mid-sentence-capital bug. Word fixups happen first; the special
+                // branches that manage their own spacing don't call this.
+                self.handleSpace(insertSpace: { standard?(controller) })
                 self.triggerHaptic()
             }
 
@@ -265,7 +270,7 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
 
     // MARK: - Space handling
 
-    private func handleSpace() {
+    private func handleSpace(insertSpace: () -> Void) {
         liveTranslateTask?.cancel()
         let raw = kbState.currentPartial
         let cleaned = raw.lowercased().trimmingCharacters(in: .punctuationCharacters)
@@ -345,7 +350,9 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
         // A1: record the autocorrection (post-fixups) so the next backspace can undo it.
         lastAutocorrection = correctionOriginal.map { (original: $0, corrected: insertedWord) }
 
-        proxy.insertText(" ")
+        // Let KeyboardKit insert the trailing space so its auto-capitalization runs
+        // for the next word (lowercase mid-sentence).
+        insertSpace()
         kbState.currentPartial = ""
 
         guard !finalWord.isEmpty else {
