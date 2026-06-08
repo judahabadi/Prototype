@@ -5,6 +5,11 @@ import Foundation
 final class SubscriptionManager: Observable {
     static let shared = SubscriptionManager()
 
+    // TEMPORARY: bypass the paywall so the app can be tested before the
+    // subscription product is live in App Store Connect. Set back to false
+    // (or delete) once the product exists and you want to test purchasing.
+    static let bypassPaywallForTesting = true
+
     // Update this product ID after creating it in App Store Connect
     static let productID = "com.harrykhizer.ProtoType.premium.monthly"
 
@@ -40,7 +45,8 @@ final class SubscriptionManager: Observable {
     }
 
     var shouldShowPaywall: Bool {
-        !isSubscribed && trialExpired
+        if Self.bypassPaywallForTesting { return false }
+        return !isSubscribed && trialExpired
     }
 
     // MARK: - Purchase
