@@ -33,13 +33,13 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
                 guard let self else { standard?(controller); return }
                 let isLetter = char.count == 1 && (char.first?.isLetter ?? false)
                 if isLetter {
-                    // Insert the letter with OUR own deterministic case rather than
-                    // KeyboardKit's. KK's auto-capitalization depends on a persisted
-                    // setting that behaves differently between a fresh Release build
-                    // and a long-running Debug build, so mid-sentence words were
-                    // capitalized on TestFlight but not locally. Computing the case
-                    // here from the live document makes Debug and Release identical.
-                    self.insertCasedLetter(char)
+                    // Let KeyboardKit insert the letter with its own auto-capitalized
+                    // case. KeyboardKit owns the shift/case state and recomputes it
+                    // from the document context after every change, so a word at a
+                    // sentence start is capitalized and a word after a mid-sentence
+                    // space is lowercase — without us driving the case (the old
+                    // two-writer setup caused mid-sentence capitals).
+                    standard?(controller)
                     self.triggerHaptic()
                     // Re-derive the current word from the live document so it always
                     // reflects the actual cursor position (e.g. after moving the
@@ -93,25 +93,6 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
         default:
             return standard
         }
-    }
-
-    /// Insert a single letter with the case we decide, not KeyboardKit's. Upper if
-    /// caps-lock is on OR the shared `Autocap` rule says this position is a sentence
-    /// start; lowercase otherwise. We deliberately do NOT trust a plain `.uppercased`
-    /// keyboard case: that's also what KeyboardKit's auto-capitalization sets, and
-    /// that auto-cap is exactly what misfires mid-sentence on a fresh Release build
-    /// (it was correct on the long-running local build, which is why caps looked
-    /// fixed locally but not on device). The document-context rule is build-stable.
-    /// Trade-off: a one-shot manual shift no longer forces a mid-word capital
-    /// (e.g. a proper noun typed mid-sentence) — caps-lock still does.
-    private func insertCasedLetter(_ char: String) {
-        let proxy = keyboardContext.textDocumentProxy
-        let capsLocked = keyboardContext.keyboardCase == .capsLocked
-        let auto = Autocap.shouldUppercase(
-            contextBefore: proxy.documentContextBeforeInput ?? "",
-            type: proxy.autocapitalizationType ?? .sentences
-        )
-        proxy.insertText((capsLocked || auto) ? char.uppercased() : char.lowercased())
     }
 
     /// Delete the whitespace and word immediately before the cursor in one step.
