@@ -231,6 +231,106 @@ either once confirmed.
 
 ---
 
+## 9. Feature-parity checklist for the rebuild
+
+What Apple's stock keyboard does, and where our clone stands. Three buckets:
+**add** (Apple does it and a 3rd-party extension *can* too), **decide** (possible but
+hard/paid), and **impossible** (the OS owns the surface — see §7).
+
+### A. Must-add for v1 — Apple does these and we can
+
+| # | Behaviour | What Apple does | Status / note |
+|---|---|---|---|
+| A1 | **Undo-autocorrect on backspace** | One tap of delete after an autocorrect reverts the *whole* correction, not one character. _(observed, iOS 17+)_ | Not implemented. Highest-value recovery gesture. |
+| A2 | **Smart spacing (smart insert/delete)** | `word ,` → `word,` (drop space before punctuation); deleting a word cleans the stray double space; auto-space after punctuation. _(documented: `smartInsertDeleteType`)_ | Old build only half-did this; rebuild should own it. |
+| A3 | **Double-capital fix** | `THe` → `The`, `HEllo` → `Hello`. _(observed)_ | Not implemented. |
+| A4 | **Abbreviation-aware autocap** | Does **not** capitalize after `e.g.`, `3.5`, `U.S.` — only true sentence ends. _(observed)_ | **This is the reported caps bug.** Our `Autocap` treats every `.` as a sentence end. Must fix. |
+| A5 | **Predictive emoji** | Suggests 🍕 in the QuickType bar when you type "pizza". _(observed)_ | Not implemented. Easy win (word→emoji map). |
+
+### B. Decide — Apple has these, but they're hard or paid
+
+| # | Behaviour | Cost / blocker |
+|---|---|---|
+| B1 | **Swipe / glide typing (QuickPath)** | Apple's flagship feature. **Not in free KeyboardKit** — needs KeyboardKit Pro or a large custom build. Biggest single gap. |
+| B2 | **Emoji keyboard plane** | The full emoji grid. KeyboardKit can provide one; or lean on the globe key to the system emoji keyboard. |
+| B3 | **Dictation (mic button)** | Needs Open Access; architecture was ready in the old build, UI never built. |
+| B4 | **Caps-lock (double-tap shift)** | Apple has it. KeyboardKit *free* likely provides it — verify, don't assume. |
+
+### C. Impossible in a 3rd-party extension (do not attempt system-wide — see §7)
+
+- Grey **inline "ghost" prediction** inside the host field.
+- **Red spell-check underline** system-wide (works only inside *our own* app's text views).
+- The autocorrect/cursor **magnifier loupe** (our space-bar cursor slide is the workaround).
+
+> Priority call: **A1–A5 are the must-adds** that make typing *feel* like Apple, are all
+> doable, and A4 fixes a live bug. **B1 (swipe)** is the big strategic decision.
+
+### v1 decisions (locked)
+
+| Item | Decision |
+|---|---|
+| A1 Undo-autocorrect on backspace | ✅ In v1 |
+| A2 Smart spacing | ✅ In v1 |
+| A3 Double-capital fix | ✅ In v1 |
+| A4 Abbreviation-aware autocap | ⚠️ Only if KeyboardKit gets it wrong — KeyboardKit owns autocap now |
+| A5 Predictive emoji | ⏭️ Deferred |
+| B1 Swipe / glide typing | ⏭️ Deferred (not buying KeyboardKit Pro yet) |
+| B2 Emoji | Globe → system emoji keyboard (no custom plane) |
+| B3 Dictation | ⏭️ Deferred |
+| B4 Caps-lock (double-tap shift) | ✅ In v1 (verify KeyboardKit provides it) |
+
+QuickType bar decision:
+- **Render chips inside KeyboardKit's own autocomplete toolbar** (feed our own
+  suggestions + restyle chips) instead of hand-rolling the bar. KeyboardKit sizes and
+  centers it consistently and it survives keyboard re-entry — this avoids the old build's
+  height-creep (44→37pt) and the centering that reverted after keyboard switches
+  (`memory.md:96-107`). Use KeyboardKit's **default height**; tune later only if it reads
+  off on device (screenshot-match if needed).
+- **Long content scrolls, short content centers.** When chips fit, they're centered in the
+  bar; when a word/translation is too long for 3 chips, the bar scrolls horizontally instead
+  of truncating or shrinking. Must be conditional — the old build's unconditional `ScrollView`
+  pinned short content to the leading edge (the off-center bug, `memory.md:118-120`).
+  **The whole chip row scrolls as one unit** — a single horizontal scroll view wrapping all
+  three chips, NOT a scroll view per chip (per-chip scrolling was the old build's mistake).
+- **Slot 0 persists after space.** When the user presses space, the left chip keeps showing
+  the word just committed plus its translation; it stays visible through space and only
+  switches to live word suggestions once the user types the first letter of the next word.
+- **Chip tap behavior:** a **tap inserts the native word**; a **long-press or double-tap
+  inserts the translation**. (Preserves Apple's "tap = your word" contract while still
+  letting the user commit the translation deliberately.)
+- **Translation display:** one line, **translation in parentheses** — `hola (hello)` —
+  the phrasebook/book convention for glossing a word (no `·` dot). Word in normal weight;
+  the parenthesized translation may be slightly dimmed. Chips themselves are divided by
+  KeyboardKit's standard vertical hairline.
+- **Smart punctuation:** use **KeyboardKit's built-in** smart punctuation (double-space→`. `,
+  curly quotes, `--`→`—`) via its settings — **not** by replacing the space action. Keeps the
+  "KeyboardKit owns typing" rule intact.
+- **Selected-text translate + fix (keep, but fix the old bugs):** when text is selected, show
+  the selected text **once** followed by its translation (the old build showed the full
+  selection *twice* before the translation and clipped it — `FEATURES.md:25`). If the content
+  is too long, the **whole row scrolls sideways** as one unit (same rule as the chip row) so
+  nothing gets cut off. A spell-fix chip stays available; tapping replaces the selection.
+
+Engine/scope decisions for the rebuild:
+- **Languages:** English only for v1.
+- **Translation:** offline local JSON only (no network / Full Access not required for translation).
+- **Autocorrect:** Apple `UITextChecker` as the primary detector + candidate source,
+  re-ranked by word frequency (Norvig `count_1w.txt`) + keyboard-key distance. **No SymSpell.**
+- **Next-word:** Norvig `count_2w.txt` bigram lookup with stupid-backoff to top unigrams.
+- **Layout:** iPhone-style — no permanent number row; numbers/symbols via the `123` key
+  (KeyboardKit default). Matches Apple's iPhone keyboard.
+- **Autocap:** **KeyboardKit fully owns** typing, shift state, and auto-capitalization.
+  The rebuild must **never replace `.space`/`.character` actions** the way the old build did
+  (that bypassed KeyboardKit's "lowercase after mid-sentence space" and caused the bug —
+  see `memory.md:122-128`); we only *layer* predictions/translation/smart-spacing on top.
+  Our custom `Autocap` layer is removed. A4 abbreviation fix is added **only if** KeyboardKit
+  mis-capitalizes after `e.g.`/`3.5` on device — verify before patching.
+- **Infra:** keep the existing Xcode project, signing, bundle IDs, App Group, `ci_scripts`,
+  entitlements; rewrite only the keyboard Swift source. Keep git history. One branch,
+  phased commits.
+
+---
+
 ## Sources
 
 - [Use predictive text on iPhone — Apple Support](https://support.apple.com/guide/iphone/use-predictive-text-iphd4ea90231/ios)

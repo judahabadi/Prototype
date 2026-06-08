@@ -14,6 +14,17 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
     /// escalate from character deletion to whole-word deletion (Apple-style).
     private var backspaceRepeats = 0
 
+    /// A1 (undo-autocorrect): the most recent autocorrection applied on space,
+    /// as (what the user typed, what we replaced it with). Set only right after a
+    /// correction; the very next backspace reverts it. Cleared by any other input.
+    private var lastAutocorrection: (original: String, corrected: String)?
+
+    /// Set when a backspace press consumed an undo-autocorrect, so the matching
+    /// release skips KeyboardKit's standard delete (which would otherwise eat a
+    /// character of the restored word). Keeps A1 safe regardless of how KK splits
+    /// the delete across press/release.
+    private var skipNextBackspaceStandard = false
+
     override func action(
         for gesture: Keyboard.Gesture,
         on action: KeyboardAction
@@ -31,15 +42,16 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
         case (.release, .character(let char)):
             return { [weak self] controller in
                 guard let self else { standard?(controller); return }
+                self.lastAutocorrection = nil   // A1: only the very next backspace can undo
                 let isLetter = char.count == 1 && (char.first?.isLetter ?? false)
                 if isLetter {
-                    // Insert the letter with OUR own deterministic case rather than
-                    // KeyboardKit's. KK's auto-capitalization depends on a persisted
-                    // setting that behaves differently between a fresh Release build
-                    // and a long-running Debug build, so mid-sentence words were
-                    // capitalized on TestFlight but not locally. Computing the case
-                    // here from the live document makes Debug and Release identical.
-                    self.insertCasedLetter(char)
+                    // Let KeyboardKit insert the letter with its own auto-capitalized
+                    // case. KeyboardKit owns the shift/case state and recomputes it
+                    // from the document context after every change, so a word at a
+                    // sentence start is capitalized and a word after a mid-sentence
+                    // space is lowercase — without us driving the case (the old
+                    // two-writer setup caused mid-sentence capitals).
+                    standard?(controller)
                     self.triggerHaptic()
                     // Re-derive the current word from the live document so it always
                     // reflects the actual cursor position (e.g. after moving the
@@ -50,6 +62,7 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
                     standard?(controller)
                     self.triggerHaptic()
                     self.applySmartPunctuation(for: char)
+                    self.removeSpaceBeforePunctuation(char)
                     self.kbState.currentPartial = ""
                     self.refreshNextWordPredictions()
                 }
@@ -59,7 +72,14 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
             // Reset the hold counter at the start of every backspace press so the
             // word-deletion escalation only kicks in on a sustained hold.
             return { [weak self] controller in
-                self?.backspaceRepeats = 0
+                guard let self else { standard?(controller); return }
+                self.backspaceRepeats = 0
+                // A1: a backspace immediately after an autocorrect reverts the whole
+                // correction instead of deleting a character (Apple behaviour).
+                if self.tryUndoAutocorrect() {
+                    self.skipNextBackspaceStandard = true
+                    return
+                }
                 standard?(controller)
             }
 
@@ -80,8 +100,14 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
 
         case (.release, .backspace):
             return { [weak self] controller in
-                standard?(controller)
-                guard let self else { return }
+                guard let self else { standard?(controller); return }
+                // Skip the standard delete on the release that pairs with an
+                // undo-autocorrect press, so the restored word isn't clipped.
+                if self.skipNextBackspaceStandard {
+                    self.skipNextBackspaceStandard = false
+                } else {
+                    standard?(controller)
+                }
                 self.backspaceRepeats = 0
                 self.triggerHaptic()
                 // Re-derive the current word from the live document so editing back
@@ -93,25 +119,6 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
         default:
             return standard
         }
-    }
-
-    /// Insert a single letter with the case we decide, not KeyboardKit's. Upper if
-    /// caps-lock is on OR the shared `Autocap` rule says this position is a sentence
-    /// start; lowercase otherwise. We deliberately do NOT trust a plain `.uppercased`
-    /// keyboard case: that's also what KeyboardKit's auto-capitalization sets, and
-    /// that auto-cap is exactly what misfires mid-sentence on a fresh Release build
-    /// (it was correct on the long-running local build, which is why caps looked
-    /// fixed locally but not on device). The document-context rule is build-stable.
-    /// Trade-off: a one-shot manual shift no longer forces a mid-word capital
-    /// (e.g. a proper noun typed mid-sentence) — caps-lock still does.
-    private func insertCasedLetter(_ char: String) {
-        let proxy = keyboardContext.textDocumentProxy
-        let capsLocked = keyboardContext.keyboardCase == .capsLocked
-        let auto = Autocap.shouldUppercase(
-            contextBefore: proxy.documentContextBeforeInput ?? "",
-            type: proxy.autocapitalizationType ?? .sentences
-        )
-        proxy.insertText((capsLocked || auto) ? char.uppercased() : char.lowercased())
     }
 
     /// Delete the whitespace and word immediately before the cursor in one step.
@@ -263,6 +270,7 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
         let raw = kbState.currentPartial
         let cleaned = raw.lowercased().trimmingCharacters(in: .punctuationCharacters)
         let proxy = keyboardContext.textDocumentProxy
+        lastAutocorrection = nil   // A1: reset; set below only if we autocorrect
 
         if cleaned.isEmpty {
             let before = proxy.documentContextBeforeInput ?? ""
@@ -299,6 +307,7 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
 
         var finalWord = cleaned
         var insertedWord = raw            // the word as it now reads in the document
+        var correctionOriginal: String?  // the typed word, when we autocorrect (A1)
         if currentNativeLanguage().isoCode == "en", let contraction = Self.englishContractions[cleaned] {
             // Apple-style contraction fix: ill -> I'll, dont -> don't, youre -> you're.
             // "I" contractions stay capital-I; the rest follow the sentence position.
@@ -315,6 +324,7 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
             for _ in 0..<raw.count { proxy.deleteBackward() }
             proxy.insertText(insertedWord)
             finalWord = correction.lowercased()
+            correctionOriginal = raw
         } else if currentNativeLanguage().isoCode == "en", isEnglishI(cleaned),
                   let f = raw.first, f.isLowercase {
             // Auto-capitalize the English pronoun "I" and its contractions ("i'm").
@@ -322,6 +332,18 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
             for _ in 0..<raw.count { proxy.deleteBackward() }
             proxy.insertText(insertedWord)
         }
+
+        // A3: fix an accidental double-capital (THe -> The) on the committed word.
+        // `insertedWord` is exactly what sits in the document right now, so we can
+        // replace it. All-caps acronyms (USA) keep their case (third char upper).
+        if let fixed = Self.fixedDoubleCapital(insertedWord), fixed != insertedWord {
+            for _ in 0..<insertedWord.count { proxy.deleteBackward() }
+            proxy.insertText(fixed)
+            insertedWord = fixed
+        }
+
+        // A1: record the autocorrection (post-fixups) so the next backspace can undo it.
+        lastAutocorrection = correctionOriginal.map { (original: $0, corrected: insertedWord) }
 
         proxy.insertText(" ")
         kbState.currentPartial = ""
@@ -371,6 +393,52 @@ final class ProtoTypeActionHandler: KeyboardAction.StandardActionHandler {
                 }
             }
         }
+    }
+
+    // MARK: - Undo autocorrect (Apple-parity A1)
+
+    /// If a correction was just applied and the document still ends with
+    /// "<corrected> ", replace it with the user's original typed word + space and
+    /// return true. The caller skips the standard delete for this backspace.
+    private func tryUndoAutocorrect() -> Bool {
+        guard let undo = lastAutocorrection else { return false }
+        lastAutocorrection = nil
+        let proxy = keyboardContext.textDocumentProxy
+        let suffix = undo.corrected + " "
+        guard (proxy.documentContextBeforeInput ?? "").hasSuffix(suffix) else { return false }
+        for _ in 0..<suffix.count { proxy.deleteBackward() }
+        proxy.insertText(undo.original + " ")
+        kbState.currentPartial = ""
+        refreshNextWordPredictions()
+        return true
+    }
+
+    // MARK: - Smart spacing & double-capital (Apple-parity A2/A3)
+
+    /// A2: drop a space sitting before sentence punctuation, so "word ," becomes
+    /// "word," (e.g. when a tapped suggestion left a trailing space). Runs after
+    /// the punctuation has been inserted by KeyboardKit.
+    private func removeSpaceBeforePunctuation(_ char: String) {
+        guard let c = char.first, ",.!?;:".contains(c) else { return }
+        let proxy = keyboardContext.textDocumentProxy
+        let before = proxy.documentContextBeforeInput ?? ""
+        guard before.hasSuffix(String(c)) else { return }
+        let withoutPunct = before.dropLast()
+        guard withoutPunct.hasSuffix(" "),
+              let prev = withoutPunct.dropLast().last, prev.isLetter || prev.isNumber else { return }
+        proxy.deleteBackward()        // remove the punctuation
+        proxy.deleteBackward()        // remove the space before it
+        proxy.insertText(String(c))   // re-insert the punctuation
+    }
+
+    /// A3: "THe" -> "The". Returns the fixed word, or nil when the word isn't an
+    /// accidental double-capital (first two letters uppercase, third lowercase).
+    /// All-caps acronyms ("USA") are left alone because their third char is upper.
+    static func fixedDoubleCapital(_ word: String) -> String? {
+        let chars = Array(word)
+        guard chars.count >= 3,
+              chars[0].isUppercase, chars[1].isUppercase, chars[2].isLowercase else { return nil }
+        return String(chars[0]) + String(chars[1]).lowercased() + String(chars[2...])
     }
 
     // MARK: - Smart punctuation (quotes & dashes)

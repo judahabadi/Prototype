@@ -1,6 +1,5 @@
 import SwiftUI
 import UIKit
-import Translation
 import KeyboardKit
 
 struct ProtoTypeKeyboardView: View {
@@ -12,8 +11,6 @@ struct ProtoTypeKeyboardView: View {
     weak var proxy: (any KeyboardProxy)?
     let predictionEngine: PredictionEngine
     let kkServices: Keyboard.Services
-
-    @State private var translationConfig: TranslationSession.Configuration?
 
     // Selection auto-translate (Feature 2)
     @State private var lastHandledSelection: String = ""
@@ -57,16 +54,6 @@ struct ProtoTypeKeyboardView: View {
             if shouldPredict {
                 predictionBar
                     .frame(height: Self.barHeight)
-                    // TEMP build marker: shows the installed build number so we can
-                    // verify which code is actually live on device. Remove later.
-                    .overlay(alignment: .trailing) {
-                        // TEMP: also show the field's autocap type the keyboard reads
-                        // (0=none 1=words 2=sentences 3=all). Remove with the marker.
-                        Text("b\(Self.buildNumber) a\(proxy?.autocapitalizationType.rawValue ?? -1)")
-                            .font(.system(size: 9))
-                            .foregroundStyle(.secondary)
-                            .padding(.trailing, 4)
-                    }
                 Rectangle()
                     .fill(Color(uiColor: .separator))
                     .frame(height: 0.5)
@@ -74,9 +61,6 @@ struct ProtoTypeKeyboardView: View {
             keyboard
         }
     }
-
-    /// Installed build number (CFBundleVersion), stamped by `ci_post_clone.sh`.
-    static let buildNumber = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
 
     private var keyboard: some View {
         KeyboardView(
@@ -102,32 +86,7 @@ struct ProtoTypeKeyboardView: View {
         .sheet(isPresented: $state.showLanguagePicker) {
             LanguagePickerView(state: state, predictionEngine: predictionEngine)
         }
-        .onAppear {
-            updateTranslationConfig()
-        }
         .onChange(of: state.contextSignal) { handleSelectionChange() }
-        .onChange(of: state.nativeLanguage) { updateTranslationConfig() }
-        .onChange(of: state.targetLanguage) { updateTranslationConfig() }
-        .translationTask(translationConfig) { session in
-            TranslationService.shared.setSession(session)
-        }
-    }
-
-    private func updateTranslationConfig() {
-        let source = Locale.Language(identifier: state.nativeLanguage.appleTranslationLocale)
-        let target = Locale.Language(identifier: state.targetLanguage.appleTranslationLocale)
-        Task {
-            let status = await LanguageAvailability().status(from: source, to: target)
-            switch status {
-            case .installed, .supported:
-                translationConfig = TranslationSession.Configuration(source: source, target: target)
-            case .unsupported:
-                translationConfig = nil
-                TranslationService.shared.clearAppleSession()
-            @unknown default:
-                translationConfig = nil
-            }
-        }
     }
 
     private func lastContextWord() -> String {
@@ -145,45 +104,62 @@ struct ProtoTypeKeyboardView: View {
             selectionBar(selection: selection)
                 .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
         } else {
-            let count = visibleChipCount
-            HStack(spacing: 0) {
-                ForEach(0..<count, id: \.self) { idx in
-                    let p = idx < state.predictions.count ? state.predictions[idx] : .empty
-                    chipContent(p)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background {
-                            // Apple-style rounded "pill" behind the auto-correct default.
-                            if p.highlighted {
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color(uiColor: .systemGray4))
-                            }
-                        }
-                        // Centre the word in its slot, both axes (a horizontal
-                        // ScrollView pinned short content to the left edge).
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            guard !p.source.isEmpty else { return }
-                            pickPrediction(p, useTranslation: false)
-                        }
-                        .onLongPressGesture(minimumDuration: 0.35) {
-                            guard !p.source.isEmpty, !p.translation.isEmpty else { return }
-                            pickPrediction(p, useTranslation: true)
-                        }
-                    if idx < count - 1 {
-                        Rectangle()
-                            .fill(Color(uiColor: .separator))
-                            .frame(width: 0.33, height: 20)
+            // The WHOLE chip row scrolls as one unit when content is too long for
+            // three chips; when it fits, leading/trailing spacers centre the row.
+            // (One scroll view around the row, not per-chip — per-chip scrolling
+            // was the old build's mistake.)
+            GeometryReader { geo in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 0) {
+                        Spacer(minLength: 0)
+                        chipRow
+                        Spacer(minLength: 0)
                     }
+                    .frame(minWidth: geo.size.width, minHeight: geo.size.height)
                 }
+                .scrollBounceBehavior(.basedOnSize)
             }
             .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
         }
     }
 
-    /// Always show three chips. Long word/translation content scrolls within its
-    /// slot (see `predictionBar`) rather than forcing a chip to be dropped.
+    /// The three suggestion chips with hairline separators, sized to content.
+    @ViewBuilder
+    private var chipRow: some View {
+        let count = visibleChipCount
+        ForEach(0..<count, id: \.self) { idx in
+            let p = idx < state.predictions.count ? state.predictions[idx] : .empty
+            chipContent(p)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 4)
+                .frame(minWidth: 64)
+                .background {
+                    // Apple-style rounded "pill" behind the auto-correct default.
+                    if p.highlighted {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color(uiColor: .systemGray4))
+                    }
+                }
+                .frame(maxHeight: .infinity, alignment: .center)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    guard !p.source.isEmpty else { return }
+                    pickPrediction(p, useTranslation: false)
+                }
+                .onLongPressGesture(minimumDuration: 0.35) {
+                    guard !p.source.isEmpty, !p.translation.isEmpty else { return }
+                    pickPrediction(p, useTranslation: true)
+                }
+            if idx < count - 1 {
+                Rectangle()
+                    .fill(Color(uiColor: .separator))
+                    .frame(width: 0.33, height: 20)
+            }
+        }
+    }
+
+    /// Always show three chips. Long content scrolls the whole row (see
+    /// `predictionBar`) rather than dropping a chip.
     private let visibleChipCount = 3
 
     // MARK: - Selection auto-translate (Feature 2)
@@ -351,15 +327,15 @@ struct ProtoTypeKeyboardView: View {
                 .lineLimit(1)
         } else {
             HStack(spacing: 4) {
+                // Book-style gloss: word with its translation in parentheses,
+                // e.g. "hola (hello)". The translation is dimmed for hierarchy.
                 Text(p.source)
                     .font(.system(size: 17, weight: .regular))
-                Text("/")
+                    .foregroundStyle(labelColor)
+                Text("(\(p.translation))")
                     .font(.system(size: 17, weight: .regular))
                     .foregroundStyle(.secondary)
-                Text(p.translation)
-                    .font(.system(size: 17, weight: .regular))
             }
-            .foregroundStyle(labelColor)
             .lineLimit(1)
         }
     }

@@ -1,23 +1,22 @@
 import Foundation
-import Translation
 
+/// Offline translation — local bundled JSON dictionaries only, no network.
+///
+/// Per the v1 decision (offline JSON only), the Apple Translation session and the
+/// MyMemory web fallback have been removed. `translate` returns a dictionary hit
+/// or "—". The `allowRemote` parameter is kept (always ignored) so existing call
+/// sites compile unchanged. The shared engine logic also lives in
+/// `Shared/Engines/TranslationEngine.swift`.
 @MainActor
 final class TranslationService {
     static let shared = TranslationService()
 
-    private var appleSession: TranslationSession?
-    private var wordCache: [String: String] = [:]
     private var localDict: [String: String] = [:]
     private var loadedPairKey: String? = nil
 
     private init() {}
 
-    func setSession(_ session: TranslationSession) {
-        appleSession = session
-        wordCache.removeAll()
-    }
-
-    func translate(word: String, from: Language, to: Language, allowRemote: Bool = true) async -> String {
+    func translate(word: String, from: Language, to: Language, allowRemote: Bool = false) async -> String {
         let trimmed = word.lowercased()
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: .punctuationCharacters)
@@ -25,40 +24,14 @@ final class TranslationService {
 
         let pairKey = "\(from.isoCode)_\(to.isoCode)"
         if loadedPairKey != pairKey {
-            wordCache.removeAll()
             localDict = loadDictionary(pairKey: pairKey)
             loadedPairKey = pairKey
         }
-
-        if let hit = localDict[trimmed] { return hit }
-        if let hit = wordCache[trimmed] { return hit }
-
-        if let session = appleSession,
-           let response = try? await session.translate(trimmed) {
-            let result = response.targetText
-            wordCache[trimmed] = result
-            return result
-        }
-
-        // Fallback for language pairs unsupported by Apple Translation (e.g. Bengali, Hebrew).
-        // Skipped for live (pre-space) lookups so we never hit the network on incomplete words.
-        if allowRemote,
-           let remote = await fetchMyMemory(word: trimmed, from: from, to: to) {
-            wordCache[trimmed] = remote
-            return remote
-        }
-
-        return "—"
-    }
-
-    func clearAppleSession() {
-        appleSession = nil
-        wordCache.removeAll()
+        return localDict[trimmed] ?? "—"
     }
 
     func evict() {
-        wordCache.removeAll()
-        appleSession = nil
+        localDict.removeAll()
         loadedPairKey = nil
     }
 
@@ -72,26 +45,5 @@ final class TranslationService {
         result.reserveCapacity(dict.count)
         for (k, v) in dict { result[k.lowercased()] = v }
         return result
-    }
-
-    private func fetchMyMemory(word: String, from: Language, to: Language) async -> String? {
-        var components = URLComponents(string: "https://api.mymemory.translated.net/get")
-        components?.queryItems = [
-            URLQueryItem(name: "q", value: word),
-            URLQueryItem(name: "langpair", value: "\(from.isoCode)|\(to.isoCode)")
-        ]
-        guard let url = components?.url else { return nil }
-        var request = URLRequest(url: url)
-        request.timeoutInterval = 4
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return nil }
-            guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let rd = obj["responseData"] as? [String: Any],
-                  let text = rd["translatedText"] as? String,
-                  !text.isEmpty
-            else { return nil }
-            return text
-        } catch { return nil }
     }
 }
