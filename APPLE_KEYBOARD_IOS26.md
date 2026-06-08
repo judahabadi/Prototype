@@ -295,6 +295,18 @@ QuickType bar decision:
 - **Slot 0 persists after space.** When the user presses space, the left chip keeps showing
   the word just committed plus its translation; it stays visible through space and only
   switches to live word suggestions once the user types the first letter of the next word.
+- **Chip tap behavior:** a **tap inserts the native word**; a **long-press or double-tap
+  inserts the translation**. (Preserves Apple's "tap = your word" contract while still
+  letting the user commit the translation deliberately.)
+- **Translation display:** inline on one line with a separator — `hola · hello`.
+- **Smart punctuation:** use **KeyboardKit's built-in** smart punctuation (double-space→`. `,
+  curly quotes, `--`→`—`) via its settings — **not** by replacing the space action. Keeps the
+  "KeyboardKit owns typing" rule intact.
+- **Selected-text translate + fix (keep, but fix the old bugs):** when text is selected, show
+  the selected text **once** followed by its translation (the old build showed the full
+  selection *twice* before the translation and clipped it — `FEATURES.md:25`). If the content
+  is too long, the **whole row scrolls sideways** as one unit (same rule as the chip row) so
+  nothing gets cut off. A spell-fix chip stays available; tapping replaces the selection.
 
 Engine/scope decisions for the rebuild:
 - **Languages:** English only for v1.
