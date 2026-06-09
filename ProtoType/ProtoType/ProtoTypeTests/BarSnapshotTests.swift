@@ -32,7 +32,7 @@ final class BarSnapshotTests: XCTestCase {
         for state in states {
             for width in widths {
                 for scheme in [ColorScheme.light, ColorScheme.dark] {
-                    let bar = ChipToolbar(suggestions: state.suggestions, targetFlag: "\u{1F1EA}\u{1F1F8}")
+                    let bar = ChipToolbar(suggestions: state.suggestions)
                         .frame(width: width, height: ChipToolbar.barHeight)
                         .background(Color(uiColor: .secondarySystemBackground))
                         .environment(\.colorScheme, scheme)
