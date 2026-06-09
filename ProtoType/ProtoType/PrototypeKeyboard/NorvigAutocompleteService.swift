@@ -9,25 +9,24 @@ import KeyboardKit
 /// - The word being typed → its autocorrect candidate (marked `.autocorrect`, so
 ///   KeyboardKit applies it on space) plus completions.
 /// - After a space → next-word predictions.
-/// - Each suggestion carries its offline translation in `subtitle`, which the
-///   custom toolbar renders as `word (translation)` and inserts on long-press.
+///
+/// Translation glosses are no longer attached here: they come from Apple's
+/// Translation framework (async) via `AppleTranslator`, which the bar reads
+/// directly. This service only produces the words.
 final class NorvigAutocompleteService: AutocompleteService {
 
     var locale: Locale
     private let nextWord: NextWordEngine
-    private let translation: TranslationEngine
     private let autocorrect = AutocorrectEngine()
     private let language: () -> Language
 
     init(
         locale: Locale,
         nextWord: NextWordEngine,
-        translation: TranslationEngine,
         language: @escaping () -> Language
     ) {
         self.locale = locale
         self.nextWord = nextWord
-        self.translation = translation
         self.language = language
     }
 
@@ -47,12 +46,12 @@ final class NorvigAutocompleteService: AutocompleteService {
     private func midWordSuggestions(for word: String) -> [Autocomplete.Suggestion] {
         var out: [Autocomplete.Suggestion] = []
         // Slot 0: the literal typed word ("keep my spelling").
-        out.append(Autocomplete.Suggestion(text: word, type: .unknown, subtitle: subtitle(for: word)))
+        out.append(Autocomplete.Suggestion(text: word, type: .unknown))
 
         // Autocorrect candidate (marked so KeyboardKit applies it on space).
         let corrections = autocorrect.suggestions(word: word, language: language(), limit: 2)
         if let top = corrections.first {
-            out.append(Autocomplete.Suggestion(text: top, type: .autocorrect, subtitle: subtitle(for: top)))
+            out.append(Autocomplete.Suggestion(text: top, type: .autocorrect))
         }
 
         // Fill the remaining slot(s) with completions.
@@ -65,12 +64,7 @@ final class NorvigAutocompleteService: AutocompleteService {
     }
 
     private func regular(_ word: String) -> Autocomplete.Suggestion {
-        Autocomplete.Suggestion(text: word, type: .regular, subtitle: subtitle(for: word))
-    }
-
-    private func subtitle(for word: String) -> String? {
-        guard let t = translation.translation(for: word), !t.isEmpty else { return nil }
-        return t
+        Autocomplete.Suggestion(text: word, type: .regular)
     }
 
     // MARK: - Word helpers

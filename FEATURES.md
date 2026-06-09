@@ -5,15 +5,22 @@
 > - **Autocapitalization is owned entirely by KeyboardKit** — typed letters
 >   delegate to KeyboardKit's standard handler, which recomputes case from the
 >   document context (fixes the mid-sentence-capital bug). We no longer drive case.
-> - **Translation is offline-only** — local bundled JSON dictionaries; the Apple
->   Translation session and the MyMemory web fallback were removed.
+> - **Translation is Apple Translation only** — on-device via Apple's Translation
+>   framework (`Shared/Engines/AppleTranslator.swift`). The pack for the selected
+>   language pair is downloaded from the app (`LanguagePackManager`); the keyboard
+>   then glosses words from that model. The bundled JSON dictionaries and the
+>   MyMemory web fallback are no longer used. Because Apple Translation is async,
+>   glosses appear a beat after the word and only once the pack is downloaded.
 > - **Engines** live in `Shared/Engines/` (used by app, extension, and tests):
 >   `AutocorrectEngine` (UITextChecker + keyboard-distance re-ranking, fixes
->   `wint→wont`), `NextWordEngine` (Norvig bigram + backoff), `TranslationEngine`
->   (offline JSON). Public-domain Norvig `count_1w` data ships as `unigrams_en.txt`.
-> - **Suggestion chips** show a book-style gloss `word (translation)`; tap inserts
->   the word, long-press inserts the translation; the whole chip row scrolls as one
->   unit when content is long. Slot 0 keeps the committed word after space.
+>   `wint→wont`), `NextWordEngine` (Norvig bigram + backoff), `AppleTranslator`
+>   (Apple Translation session + cache). Public-domain Norvig `count_1w` data ships
+>   as `unigrams_en.txt`. `TranslationEngine` (offline JSON) is now unused by the
+>   keyboard — the `translations_*.json` resources are dead and can be removed.
+> - **Suggestion chips** sit in Apple-style equal segments separated by short
+>   hairlines and show a book-style gloss `word (translation)`; tap inserts the
+>   word, long-press inserts the translation. Slot 0 keeps the committed word after
+>   space.
 > - **Apple-parity additions:** A1 undo-autocorrect (a backspace right after a
 >   correction reverts it), A2 smart spacing (`word ,`→`word,`), A3 double-capital
 >   fix (`THe`→`The`).
@@ -26,7 +33,7 @@
 
 ### Core
 
-- **Live translation chip** — after typing a word and pressing space, the first prediction chip shows the word with its translation in the target language, looked up from the local bundled dictionary (offline only; no network fallback in the v1 rebuild).
+- **Live translation chip** — prediction chips show the word with its translation in the target language, translated on-device by Apple's Translation framework (gloss appears asynchronously once the language pack is downloaded; no gloss before that, and predictions/autocorrect still work).
 - **Next-word predictions** — slots 1 and 2 show the most likely next words based on bigram/trigram statistics, filtered to exclude words already used nearby in the current document.
 - **Autocorrect** — `AutocorrectService` corrects typos before the word is committed. Applied on space, after lexicon expansion, before translation.
 - **iOS text replacements** — checks `UIInputViewController.requestSupplementaryLexicon` on load and appearance. User's text replacements (e.g. `omw` → `On my way!`) are expanded on space, taking priority over autocorrect.
@@ -111,48 +118,40 @@ Mandarin uses `zh-Hans` (Simplified) with Apple Translation and `zh` for local d
 
 ---
 
-## Planned feature: Apple Translation only (replace the JSON dictionaries)
+## Apple Translation only (shipped — replaces the JSON dictionaries)
 
-**Goal:** drop the tiny bundled `translations_*.json` dictionaries (~150 hand-seeded
-words each — instant but almost no coverage) and use **Apple's on-device Translation
-framework** as the single translation source (translates any word, on-device after a
-one-time pack download).
+**Goal (done):** Apple's on-device Translation framework is the single translation
+source. Any word translates on-device once the pair's pack is downloaded.
 
 ### App
-- The language section already sets the native/target pair (`HomeView` → `AppState`
-  → App Group).
-- **Auto-download on selection (caveat):** when the user picks the native +
-  translation languages, **immediately download the Apple language pack** for that
-  pair (no separate Download button — selecting *is* the trigger). Re-download when
-  the pair changes. Show inline status/progress via `LanguageAvailability` +
-  `TranslationSession` (`prepareTranslation`).
-- **One-time consent:** iOS shows a system consent sheet the first time a model is
-  downloaded; we can't silent-download before that. After consent, later pairs
-  download automatically.
-- Onboarding should guide the first download.
+- `LanguagePackManager` checks `LanguageAvailability().status` for the selected
+  pair and, when supported but not installed, sets a `TranslationSession.Configuration`.
+- `LanguagePackStatusView` (shown under the language pickers in both onboarding and
+  the Home tab) drives a `.translationTask` that calls `prepareTranslation()` —
+  **selecting a pair is the trigger**; the row shows checking/downloading/ready/
+  unsupported. iOS shows its one-time consent sheet on the first download.
 
 ### Keyboard
-- Translation comes **only** from the downloaded Apple model (re-introduces the
-  Apple `TranslationSession`/`.translationTask` wiring removed in the offline-only
-  rebuild; old `TranslationService` had a working version to resurrect).
-- Before the pack is downloaded → **no translation shown** (predictions + autocorrect
-  still work), ideally with a subtle "set up in app" hint.
+- `AppleTranslator` (`Shared/Engines/`) holds the live `TranslationSession` handed
+  in by a `.translationTask` in `ProtoTypeKeyboardView` and an async word→gloss
+  cache the bar reads. Before the pack is downloaded → no gloss (predictions +
+  autocorrect still work).
 
 ### Unchanged
-- Word **prediction** (Norvig `NextWordEngine`) and **autocorrect**
-  (`UITextChecker`/`AutocorrectEngine`) are not translation — they stay.
+- Word **prediction** (`NextWordEngine`) and **autocorrect** (`AutocorrectEngine`)
+  are not translation — they stay.
 
 ### Risks / tradeoffs
-1. **Extension memory** — Apple Translation must run inside the keyboard extension;
-   if iOS kills it there are no translations. (The old build ran it in the keyboard,
-   so it's feasible — but this is now the *only* translation path, so it's critical.)
-2. **Async** — Apple Translation is async, so the translated chip appears a beat
-   after the word (our current bar is synchronous; adds some complexity back).
-3. **Coverage** — Apple supports a fixed set of pairs; unsupported pairs get no
-   translation.
-4. **Gated on download** — no pack = no translation; the app must drive the download.
-5. Requires iOS 18+ for the Translation framework (deploy target is 26.0 — fine).
+1. **Extension memory** — Apple Translation runs inside the keyboard extension; the
+   cache is evicted on `didReceiveMemoryWarning`.
+2. **Async** — glosses appear a beat after the word (the bar renders the chip first,
+   then re-renders when the gloss lands).
+3. **Coverage** — Apple supports a fixed set of pairs; unsupported pairs get no gloss.
+4. **Gated on download** — no pack = no gloss; the app drives the download.
+5. **Unverified on-device** — wiring was written without an Xcode build; needs a
+   real build/run to confirm the session works in the extension.
 
-### Removed when implemented
-- `Resources/translations_*.json`, the JSON path in `TranslationEngine` (or the whole
-  engine if Apple fully replaces it).
+### Dead code to remove (left in place to avoid project-file churn)
+- `Resources/translations_*.json` and the JSON-loading path in `TranslationEngine`
+  are no longer used by the keyboard. Safe to delete from Xcode when convenient
+  (`TranslationEngine`'s in-memory `loadDictionary` path is still unit-tested).

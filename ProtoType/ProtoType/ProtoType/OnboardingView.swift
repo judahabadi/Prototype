@@ -113,6 +113,9 @@ private struct LanguageScreen: View {
             VStack(spacing: 16) {
                 LanguageRow(title: "I speak", selection: $state.nativeLanguage)
                 LanguageRow(title: "I'm learning", selection: $state.targetLanguage)
+                if appState.nativeLanguage != appState.targetLanguage {
+                    LanguagePackStatusView(from: appState.nativeLanguage, to: appState.targetLanguage)
+                }
             }
             .padding(.horizontal, 24)
 

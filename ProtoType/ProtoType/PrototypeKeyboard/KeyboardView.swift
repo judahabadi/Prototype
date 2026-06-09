@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import KeyboardKit
+import Translation
 
 /// The keyboard view. KeyboardKit owns typing, capitalization, and the
 /// autocomplete pipeline; we map its suggestions into `ChipToolbar` (a pure,
@@ -12,13 +13,26 @@ struct ProtoTypeKeyboardView: View {
     let services: Keyboard.Services
     @ObservedObject var autocompleteContext: AutocompleteContext
 
+    /// Live Apple-Translation glosses for the bar (shared so the controller can
+    /// evict the cache on a memory warning). Accessed lazily so the singleton is
+    /// only touched from the main-actor view body/handlers.
+    private var translator: AppleTranslator { .shared }
+
     private var isRTL: Bool {
         state.nativeLanguage.isRTL || state.targetLanguage.isRTL
     }
 
+    /// The words currently in the bar — used to request glosses and as the
+    /// `.onChange` key (Apple Translation is async; glosses fill in after).
+    private var currentWords: [String] {
+        autocompleteContext.suggestions.prefix(3).map(\.text)
+    }
+
     private var barSuggestions: [BarSuggestion] {
         autocompleteContext.suggestions.prefix(3).map {
-            BarSuggestion(text: $0.text, subtitle: $0.subtitle, isAutocorrect: $0.isAutocorrect)
+            BarSuggestion(text: $0.text,
+                          subtitle: translator.translation(for: $0.text),
+                          isAutocorrect: $0.isAutocorrect)
         }
     }
 
@@ -56,6 +70,20 @@ struct ProtoTypeKeyboardView: View {
             }
             return params.standardActions()
         }
+        // Apple Translation: keep a live session for the current language pair and
+        // translate the words shown in the bar. Glosses land asynchronously.
+        .translationTask(translator.configuration) { session in
+            await translator.run(session: session, initial: currentWords)
+        }
+        .onChange(of: currentWords) { _, words in
+            translator.request(words)
+        }
+        .onChange(of: [state.nativeLanguage, state.targetLanguage]) { _, _ in
+            translator.configure(from: state.nativeLanguage, to: state.targetLanguage)
+        }
+        .onAppear {
+            translator.configure(from: state.nativeLanguage, to: state.targetLanguage)
+        }
     }
 
     /// Apply the suggestion at `index`: tap inserts the word, long-press inserts
@@ -66,8 +94,8 @@ struct ProtoTypeKeyboardView: View {
         guard index < suggestions.count else { return }
         let suggestion = suggestions[index]
         if translation {
-            if let sub = suggestion.subtitle, !sub.isEmpty {
-                services.actionHandler.handle(Autocomplete.Suggestion(text: sub))
+            if let gloss = translator.translation(for: suggestion.text), !gloss.isEmpty {
+                services.actionHandler.handle(Autocomplete.Suggestion(text: gloss))
             }
         } else {
             services.actionHandler.handle(suggestion)

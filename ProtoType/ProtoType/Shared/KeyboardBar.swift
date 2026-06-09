@@ -16,12 +16,13 @@ struct BarSuggestion: Identifiable {
     }
 }
 
-/// The QuickType bar: up to three suggestions rendered inline as
-/// `word (translation)`. Adaptive — shows as many *full* chips as fit the width
-/// (3, then 2, then 1) rather than truncating, so a long `word (translation)`
-/// pair drops a chip instead of getting cut off. Tap inserts the word;
-/// long-press inserts the translation. Pure SwiftUI over plain data so it renders
-/// in snapshot tests.
+/// The QuickType bar: up to three suggestions laid out Apple-style — each in its
+/// own equal-width segment, centered, separated by short vertical hairlines (not
+/// packed together in the middle). Adaptive — shows as many *full* chips as fit
+/// their equal share (3, then 2, then 1) rather than truncating, so a long
+/// `word (translation)` pair drops a chip instead of getting cut off. Tap inserts
+/// the word; long-press inserts the translation. Pure SwiftUI over plain data so
+/// it renders in snapshot tests.
 struct ChipToolbar: View {
     let suggestions: [BarSuggestion]
     var pick: (Int) -> Void = { _ in }
@@ -33,22 +34,21 @@ struct ChipToolbar: View {
 
     private static let font = UIFont.systemFont(ofSize: 16)
     private static let chipHorizontalPadding: CGFloat = 24   // 12pt each side
-    private static let separatorWidth: CGFloat = 9
+    private static let separatorWidth: CGFloat = 0.5         // hairline between segments
 
     var body: some View {
         GeometryReader { geo in
             let shown = fittingChips(in: geo.size.width)
             HStack(spacing: 0) {
-                Spacer(minLength: 0)
                 ForEach(Array(shown.enumerated()), id: \.element.index) { offset, item in
                     if offset > 0 {
                         Rectangle()
                             .fill(Color(uiColor: .separator))
-                            .frame(width: 0.5, height: 18)
+                            .frame(width: Self.separatorWidth, height: 18)
                     }
                     chip(item.suggestion, index: item.index)
+                        .frame(maxWidth: .infinity)   // equal segment, chip centered within
                 }
-                Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -90,20 +90,18 @@ struct ChipToolbar: View {
         return ceil(textW) + Self.chipHorizontalPadding
     }
 
-    /// Greedily include suggestions (highest priority first) while they fit at
-    /// their full width; always show at least one.
+    /// Pick the largest count N (≤3, highest priority first) such that every
+    /// chosen chip fits its equal-width segment without truncating. Falls back to
+    /// the first chip alone so the bar is never empty.
     private func fittingChips(in width: CGFloat) -> [(index: Int, suggestion: BarSuggestion)] {
-        var available = width - 8   // small edge margin
-        var out: [(index: Int, suggestion: BarSuggestion)] = []
-        for (i, s) in suggestions.prefix(3).enumerated() {
-            let need = chipWidth(s) + (out.isEmpty ? 0 : Self.separatorWidth)
-            if out.isEmpty || need <= available {
-                out.append((index: i, suggestion: s))
-                available -= need
-            } else {
-                break
+        let all = Array(suggestions.prefix(3).enumerated())
+        for n in stride(from: min(3, all.count), through: 1, by: -1) {
+            let segment = (width - CGFloat(n - 1) * Self.separatorWidth) / CGFloat(n)
+            let chosen = all.prefix(n)
+            if chosen.allSatisfy({ chipWidth($0.element) <= segment }) {
+                return chosen.map { (index: $0.offset, suggestion: $0.element) }
             }
         }
-        return out
+        return all.prefix(1).map { (index: $0.offset, suggestion: $0.element) }
     }
 }

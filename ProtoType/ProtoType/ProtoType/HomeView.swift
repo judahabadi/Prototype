@@ -96,6 +96,8 @@ private struct HomeTab: View {
                         .padding(.vertical, 4)
                     LanguageRow(title: "I'm learning", selection: $state.targetLanguage)
                         .padding(.vertical, 4)
+                    LanguagePackStatusView(from: appState.nativeLanguage, to: appState.targetLanguage)
+                        .padding(.vertical, 4)
                 }
 
                 // How to use

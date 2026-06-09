@@ -3,14 +3,15 @@ import SwiftUI
 import KeyboardKit
 
 /// Native KeyboardKit keyboard. KeyboardKit owns all typing, capitalization, and
-/// autocorrect; we only plug in a custom autocomplete service (Norvig + offline
-/// translation) so the bar shows our suggestions. There is no custom action
-/// handler — that's what kept breaking capitalization.
+/// autocorrect; we only plug in a custom autocomplete service (Norvig word
+/// suggestions) so the bar shows our suggestions. Translation glosses come from
+/// Apple's Translation framework via `AppleTranslator`, wired up in the SwiftUI
+/// view. There is no custom action handler — that's what kept breaking
+/// capitalization.
 final class KeyboardViewController: KeyboardInputViewController, UIInputViewAudioFeedback {
 
     var kbState: KeyboardState!
     private var nextWordEngine = NextWordEngine()
-    private let translationEngine = TranslationEngine()
     private var didLoadNextWord = false
 
     override func viewDidLoad() {
@@ -35,14 +36,13 @@ final class KeyboardViewController: KeyboardInputViewController, UIInputViewAudi
         installAutocompleteService()
     }
 
-    /// (Re)load the suggestion + translation data. Next-word data is the bundled
-    /// English Norvig set (loaded once); translation depends on the language pair.
+    /// Load the bundled English Norvig next-word set (once). Translation no longer
+    /// depends on bundled data — it comes from Apple's on-device model.
     private func loadEngines() {
         if !didLoadNextWord, let english = NextWordEngine.english() {
             nextWordEngine = english
             didLoadNextWord = true
         }
-        translationEngine.load(from: kbState.nativeLanguage, to: kbState.targetLanguage)
     }
 
     /// Install our Norvig-backed autocomplete service. KeyboardKit calls it on
@@ -51,7 +51,6 @@ final class KeyboardViewController: KeyboardInputViewController, UIInputViewAudi
         services.autocompleteService = NorvigAutocompleteService(
             locale: Locale(identifier: kbState.nativeLanguage.isoCode),
             nextWord: nextWordEngine,
-            translation: translationEngine,
             language: { [weak self] in self?.kbState.nativeLanguage ?? .english }
         )
     }
@@ -97,7 +96,7 @@ final class KeyboardViewController: KeyboardInputViewController, UIInputViewAudi
 
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
-        translationEngine.evict()
+        AppleTranslator.shared.evict()
     }
 
     // MARK: - UIInputViewAudioFeedback
