@@ -596,7 +596,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ProtoType.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ProtoType";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Prototype: Type to Fluency.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Prototype: Type to Fluency";
 			};
 			name = Debug;
 		};
@@ -618,7 +618,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ProtoType.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ProtoType";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Prototype: Type to Fluency.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Prototype: Type to Fluency";
 			};
 			name = Release;
 		};
