@@ -33,10 +33,8 @@ struct ProtoTypeKeyboardView: View {
             toolbar: { _ in
                 ChipToolbar(
                     suggestions: barSuggestions,
-                    targetFlag: state.targetLanguage.flag,
                     pick: { apply($0, translation: false) },
-                    pickTranslation: { apply($0, translation: true) },
-                    onFlag: { state.showLanguagePicker = true }
+                    pickTranslation: { apply($0, translation: true) }
                 )
                 .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
             }
