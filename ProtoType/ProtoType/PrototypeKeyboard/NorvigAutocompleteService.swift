@@ -34,7 +34,7 @@ final class NorvigAutocompleteService: AutocompleteService {
         let current = trailingWord(in: text)
         let suggestions: [Autocomplete.Suggestion]
         if current.isEmpty {
-            suggestions = nextWord.nextWords(after: previousWord(in: text), limit: 3).map { regular($0) }
+            suggestions = afterSpaceSuggestions(in: text)
         } else {
             suggestions = midWordSuggestions(for: current)
         }
@@ -42,6 +42,21 @@ final class NorvigAutocompleteService: AutocompleteService {
     }
 
     // MARK: - Suggestion building
+
+    /// Just hit space: keep the word just committed in slot 0 (so its translation
+    /// stays visible), then fill slots 1–2 with next-word predictions.
+    private func afterSpaceSuggestions(in text: String) -> [Autocomplete.Suggestion] {
+        let prev = previousWord(in: text)
+        var out: [Autocomplete.Suggestion] = []
+        if !prev.isEmpty {
+            out.append(Autocomplete.Suggestion(text: prev, type: .unknown))
+        }
+        for word in nextWord.nextWords(after: prev, limit: 3) where out.count < 3 {
+            guard word.lowercased() != prev.lowercased() else { continue }
+            out.append(regular(word))
+        }
+        return Array(out.prefix(3))
+    }
 
     private func midWordSuggestions(for word: String) -> [Autocomplete.Suggestion] {
         var out: [Autocomplete.Suggestion] = []
