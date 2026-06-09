@@ -66,7 +66,6 @@ jobs:
             -scheme ProtoType \
             -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}" \
             -resultBundlePath TestResults.xcresult \
-            IPHONEOS_DEPLOYMENT_TARGET=${{ steps.sim.outputs.os_ver }} \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
