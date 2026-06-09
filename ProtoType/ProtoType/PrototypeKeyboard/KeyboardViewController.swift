@@ -71,7 +71,6 @@ final class KeyboardViewController: KeyboardInputViewController, UIInputViewAudi
             ProtoTypeKeyboardView(
                 state: self.kbState,
                 services: controller.services,
-                autocompleteContext: controller.state.autocompleteContext,
                 reloadEngines: { [weak self] in self?.reloadForLanguageChange() }
             )
         }
