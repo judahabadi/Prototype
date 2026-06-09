@@ -105,7 +105,54 @@ Mandarin uses `zh-Hans` (Simplified) with Apple Translation and `zh` for local d
 
 ## Planned / backlog
 
-- Expand local dictionaries to 3k–10k entries per pair (see `DICTIONARY.md`)
 - Dictation handoff button
 - In-app haptic on/off toggle
 - Long-press alternate characters
+
+---
+
+## Planned feature: Apple Translation only (replace the JSON dictionaries)
+
+**Goal:** drop the tiny bundled `translations_*.json` dictionaries (~150 hand-seeded
+words each — instant but almost no coverage) and use **Apple's on-device Translation
+framework** as the single translation source (translates any word, on-device after a
+one-time pack download).
+
+### App
+- The language section already sets the native/target pair (`HomeView` → `AppState`
+  → App Group).
+- **Auto-download on selection (caveat):** when the user picks the native +
+  translation languages, **immediately download the Apple language pack** for that
+  pair (no separate Download button — selecting *is* the trigger). Re-download when
+  the pair changes. Show inline status/progress via `LanguageAvailability` +
+  `TranslationSession` (`prepareTranslation`).
+- **One-time consent:** iOS shows a system consent sheet the first time a model is
+  downloaded; we can't silent-download before that. After consent, later pairs
+  download automatically.
+- Onboarding should guide the first download.
+
+### Keyboard
+- Translation comes **only** from the downloaded Apple model (re-introduces the
+  Apple `TranslationSession`/`.translationTask` wiring removed in the offline-only
+  rebuild; old `TranslationService` had a working version to resurrect).
+- Before the pack is downloaded → **no translation shown** (predictions + autocorrect
+  still work), ideally with a subtle "set up in app" hint.
+
+### Unchanged
+- Word **prediction** (Norvig `NextWordEngine`) and **autocorrect**
+  (`UITextChecker`/`AutocorrectEngine`) are not translation — they stay.
+
+### Risks / tradeoffs
+1. **Extension memory** — Apple Translation must run inside the keyboard extension;
+   if iOS kills it there are no translations. (The old build ran it in the keyboard,
+   so it's feasible — but this is now the *only* translation path, so it's critical.)
+2. **Async** — Apple Translation is async, so the translated chip appears a beat
+   after the word (our current bar is synchronous; adds some complexity back).
+3. **Coverage** — Apple supports a fixed set of pairs; unsupported pairs get no
+   translation.
+4. **Gated on download** — no pack = no translation; the app must drive the download.
+5. Requires iOS 18+ for the Translation framework (deploy target is 26.0 — fine).
+
+### Removed when implemented
+- `Resources/translations_*.json`, the JSON path in `TranslationEngine` (or the whole
+  engine if Apple fully replaces it).
