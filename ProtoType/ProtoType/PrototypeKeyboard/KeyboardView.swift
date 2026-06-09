@@ -11,7 +11,6 @@ struct ProtoTypeKeyboardView: View {
     @Bindable var state: KeyboardState
     let services: Keyboard.Services
     @ObservedObject var autocompleteContext: AutocompleteContext
-    let reloadEngines: () -> Void
 
     private var isRTL: Bool {
         state.nativeLanguage.isRTL || state.targetLanguage.isRTL
@@ -51,9 +50,6 @@ struct ProtoTypeKeyboardView: View {
                 return chars.map { KeyboardAction.character(String($0)) }
             }
             return params.standardActions()
-        }
-        .sheet(isPresented: $state.showLanguagePicker) {
-            LanguagePickerView(state: state, reloadEngines: reloadEngines)
         }
     }
 

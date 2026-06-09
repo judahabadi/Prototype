@@ -15,16 +15,13 @@ final class KeyboardViewController: KeyboardInputViewController, UIInputViewAudi
 
     override func viewDidLoad() {
         // Initialize state before super, since super may trigger view setup.
-        let defaults = AppGroup.defaults
-        defaults.set(true, forKey: "keyboardDidLoad")
-        let native = Language(rawValue: defaults.string(forKey: AppGroup.nativeKey) ?? "") ?? .english
-        var target = Language(rawValue: defaults.string(forKey: AppGroup.targetKey) ?? "") ?? .spanish
-        if target == native { target = (native == .english) ? .spanish : .english }
-        kbState = KeyboardState(native: native, target: target)
+        AppGroup.defaults.set(true, forKey: "keyboardDidLoad")
+        let langs = storedLanguages()
+        kbState = KeyboardState(native: langs.native, target: langs.target)
 
         super.viewDidLoad()
 
-        state.keyboardContext.locale = Locale(identifier: native.isoCode)
+        state.keyboardContext.locale = Locale(identifier: langs.native.isoCode)
 
         // Make sure autocomplete + the toolbar are on. These settings persist in
         // UserDefaults, and the previous build wrote `isToolbarEnabled = false`,
@@ -59,11 +56,33 @@ final class KeyboardViewController: KeyboardInputViewController, UIInputViewAudi
         )
     }
 
-    /// Called from the language picker when the pair changes.
+    /// Reload engines + locale for the current language pair.
     func reloadForLanguageChange() {
         state.keyboardContext.locale = Locale(identifier: kbState.nativeLanguage.isoCode)
         loadEngines()
         installAutocompleteService()
+    }
+
+    /// The language pair the user selected in the app (stored in the App Group).
+    private func storedLanguages() -> (native: Language, target: Language) {
+        let defaults = AppGroup.defaults
+        let native = Language(rawValue: defaults.string(forKey: AppGroup.nativeKey) ?? "") ?? .english
+        var target = Language(rawValue: defaults.string(forKey: AppGroup.targetKey) ?? "") ?? .spanish
+        if target == native { target = (native == .english) ? .spanish : .english }
+        return (native, target)
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        // The user picks the language pair in the app; re-read it each time the
+        // keyboard appears and reload if it changed (the extension may stay in
+        // memory across appearances).
+        let langs = storedLanguages()
+        if langs.native != kbState.nativeLanguage || langs.target != kbState.targetLanguage {
+            kbState.nativeLanguage = langs.native
+            kbState.targetLanguage = langs.target
+            reloadForLanguageChange()
+        }
     }
 
     override func viewWillSetupKeyboardView() {
@@ -71,8 +90,7 @@ final class KeyboardViewController: KeyboardInputViewController, UIInputViewAudi
             ProtoTypeKeyboardView(
                 state: self.kbState,
                 services: controller.services,
-                autocompleteContext: controller.state.autocompleteContext,
-                reloadEngines: { [weak self] in self?.reloadForLanguageChange() }
+                autocompleteContext: controller.state.autocompleteContext
             )
         }
     }

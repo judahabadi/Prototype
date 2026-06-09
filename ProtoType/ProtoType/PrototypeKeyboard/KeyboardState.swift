@@ -7,7 +7,6 @@ import Observation
 final class KeyboardState {
     var nativeLanguage: Language
     var targetLanguage: Language
-    var showLanguagePicker: Bool = false
 
     init(native: Language, target: Language) {
         self.nativeLanguage = native
