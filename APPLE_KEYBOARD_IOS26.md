@@ -315,8 +315,8 @@ Engine/scope decisions for the rebuild:
 - **Languages:** English only for v1.
 - **Translation:** offline local JSON only (no network / Full Access not required for translation).
 - **Autocorrect:** Apple `UITextChecker` as the primary detector + candidate source,
-  re-ranked by word frequency (Norvig `count_1w.txt`) + keyboard-key distance. **No SymSpell.**
-- **Next-word:** Norvig `count_2w.txt` bigram lookup with stupid-backoff to top unigrams.
+  re-ranked by keyboard-key distance (checker frequency order breaks ties). **No SymSpell.**
+- **Next-word:** OpenSubtitles bigram lookup (`ngrams_*.json`) with stupid-backoff to top unigrams.
 - **Layout:** iPhone-style — no permanent number row; numbers/symbols via the `123` key
   (KeyboardKit default). Matches Apple's iPhone keyboard.
 - **Autocap:** **KeyboardKit fully owns** typing, shift state, and auto-capitalization.

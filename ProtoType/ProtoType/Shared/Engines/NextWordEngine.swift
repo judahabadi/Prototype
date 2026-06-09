@@ -2,9 +2,9 @@ import Foundation
 
 /// Next-word + completion engine backed by n-gram frequency data.
 ///
-/// Designed for the public-domain Norvig n-gram lists (`count_1w.txt` unigrams,
-/// `count_2w.txt` bigrams), but `load(unigrams:bigrams:)` accepts any in-memory
-/// data so it's deterministic to unit-test without bundled files.
+/// Backed by bigram/unigram tables built from the OPUS OpenSubtitles corpus
+/// (see `scripts/build_ngrams.py`), but `load(unigrams:bigrams:)` accepts any
+/// in-memory data so it's deterministic to unit-test without bundled files.
 ///
 /// Lookup is "stupid backoff": try the bigram for the last word; if none, fall
 /// back to the most frequent unigrams. Only the top-K next words per head word
@@ -41,7 +41,7 @@ final class NextWordEngine {
     /// Load bigrams from the project's `ngrams_*.json` format — head word → an
     /// ordered list of likely next words (already sorted, no counts). List
     /// position becomes a descending pseudo-count. Unigrams come from a separate
-    /// frequency list (the Norvig `count_1w` data).
+    /// frequency list (`unigrams_en.txt`).
     func load(bigramLists: [String: [String]], unigrams: [(String, Int)]) {
         self.unigrams = unigrams
             .map { (word: $0.0.lowercased(), count: $0.1) }
@@ -56,8 +56,8 @@ final class NextWordEngine {
     }
 
     /// Build the English engine from the bundled `ngrams_en.json` (bigrams,
-    /// top-5 next words per head) and `unigrams_en.txt` (public-domain Norvig
-    /// `count_1w` frequency list, trimmed). Returns nil if a resource is missing.
+    /// top-5 next words per head) and `unigrams_en.txt` (word-frequency list,
+    /// trimmed). Returns nil if a resource is missing.
     static func english(in bundle: Bundle = .main) -> NextWordEngine? {
         guard let ngramsURL = bundle.url(forResource: "ngrams_en", withExtension: "json"),
               let unigramURL = bundle.url(forResource: "unigrams_en", withExtension: "txt"),
@@ -78,8 +78,8 @@ final class NextWordEngine {
         return engine
     }
 
-    /// Load from Norvig-format tab-separated text:
-    /// `count_1w.txt` lines are `word\tcount`; `count_2w.txt` lines are
+    /// Load from tab-separated frequency text:
+    /// unigram lines are `word\tcount`; bigram lines are
     /// `word1 word2\tcount`. Used at runtime with the bundled data files.
     func loadFromTSV(unigramText: String, bigramText: String) {
         var uni: [(String, Int)] = []

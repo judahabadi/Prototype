@@ -13,8 +13,8 @@
 >   glosses appear a beat after the word and only once the pack is downloaded.
 > - **Engines** live in `Shared/Engines/` (used by app, extension, and tests):
 >   `AutocorrectEngine` (UITextChecker + keyboard-distance re-ranking, fixes
->   `wint→wont`), `NextWordEngine` (Norvig bigram + backoff), `AppleTranslator`
->   (Apple Translation session + cache). Public-domain Norvig `count_1w` data ships
+>   `wint→wont`), `NextWordEngine` (OpenSubtitles bigram + backoff), `AppleTranslator`
+>   (Apple Translation session + cache). Word-frequency data ships
 >   as `unigrams_en.txt`. `TranslationEngine` (offline JSON) is now unused by the
 >   keyboard — the `translations_*.json` resources are dead and can be removed.
 > - **Suggestion chips** sit in Apple-style equal segments separated by short

@@ -1,10 +1,10 @@
 import Foundation
 import KeyboardKit
 
-/// Feeds our Norvig-backed suggestions into KeyboardKit's native autocomplete
-/// system. KeyboardKit owns all typing, capitalization, and autocorrect-on-space;
-/// this only supplies *what* to show and *what* to autocorrect — there is no
-/// custom typing code, so capitalization can't break.
+/// Feeds our next-word/autocorrect suggestions into KeyboardKit's native
+/// autocomplete system. KeyboardKit owns all typing, capitalization, and
+/// autocorrect-on-space; this only supplies *what* to show and *what* to
+/// autocorrect — there is no custom typing code, so capitalization can't break.
 ///
 /// - The word being typed → its autocorrect candidate (marked `.autocorrect`, so
 ///   KeyboardKit applies it on space) plus completions.
@@ -13,7 +13,7 @@ import KeyboardKit
 /// Translation glosses are no longer attached here: they come from Apple's
 /// Translation framework (async) via `AppleTranslator`, which the bar reads
 /// directly. This service only produces the words.
-final class NorvigAutocompleteService: AutocompleteService {
+final class SuggestionService: AutocompleteService {
 
     var locale: Locale
     private let nextWord: NextWordEngine

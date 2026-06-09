@@ -159,8 +159,8 @@ code placed in `Shared/Engines/` is usable by all three and unit-testable.
 - `AutocorrectEngine` — UITextChecker detection + candidate words re-ranked by
   keyboard-key distance (fixes `wint→wont`, which frequency ranking alone does not).
 - `NextWordEngine` — bigram + stupid-backoff + prefix completions; consumes the bundled
-  `ngrams_en.json` (top-5/head) and `unigrams_en.txt` (public-domain Norvig `count_1w`,
-  top-50k alpha words). No SymSpell (it wouldn't fix `wint→wont` and adds a dependency).
+  `ngrams_en.json` (top-5/head) and `unigrams_en.txt` (OpenSubtitles word
+  frequencies, top-50k). No SymSpell (it wouldn't fix `wint→wont` and adds a dependency).
 - `TranslationEngine` — offline local-JSON lookup + lemma fallback.
 
 **Keyboard behaviour changes:**
@@ -187,6 +187,6 @@ work; switching to the literal KeyboardKit versions was deferred to avoid blind 
 the binary-distributed KeyboardKit 10.5.1 API. The old `PredictionEngine`/`AutocorrectService`
 remain wired (functionally equal to the new Shared engines); a full swap is optional cleanup.
 
-**Note:** `NOTICES.md` added (KeyboardKit MIT, Norvig public domain). The temporary
+**Note:** `NOTICES.md` added (KeyboardKit MIT, OpenSubtitles next-word data). The temporary
 `bypassPaywallForTesting` flag merged earlier (PR #32) is still on `main` — set it back to
 false before shipping.

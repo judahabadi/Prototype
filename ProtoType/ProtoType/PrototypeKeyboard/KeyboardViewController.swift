@@ -3,7 +3,7 @@ import SwiftUI
 import KeyboardKit
 
 /// Native KeyboardKit keyboard. KeyboardKit owns all typing, capitalization, and
-/// autocorrect; we only plug in a custom autocomplete service (Norvig word
+/// autocorrect; we only plug in a custom autocomplete service (our word
 /// suggestions) so the bar shows our suggestions. Translation glosses come from
 /// Apple's Translation framework via `AppleTranslator`, wired up in the SwiftUI
 /// view. There is no custom action handler — that's what kept breaking
@@ -36,7 +36,7 @@ final class KeyboardViewController: KeyboardInputViewController, UIInputViewAudi
         installAutocompleteService()
     }
 
-    /// Load the bundled English Norvig next-word set (once). Translation no longer
+    /// Load the bundled English next-word set (once). Translation no longer
     /// depends on bundled data — it comes from Apple's on-device model.
     private func loadEngines() {
         if !didLoadNextWord, let english = NextWordEngine.english() {
@@ -45,10 +45,10 @@ final class KeyboardViewController: KeyboardInputViewController, UIInputViewAudi
         }
     }
 
-    /// Install our Norvig-backed autocomplete service. KeyboardKit calls it on
+    /// Install our autocomplete service. KeyboardKit calls it on
     /// every text change and applies autocorrect suggestions on space.
     private func installAutocompleteService() {
-        services.autocompleteService = NorvigAutocompleteService(
+        services.autocompleteService = SuggestionService(
             locale: Locale(identifier: kbState.nativeLanguage.isoCode),
             nextWord: nextWordEngine,
             language: { [weak self] in self?.kbState.nativeLanguage ?? .english }

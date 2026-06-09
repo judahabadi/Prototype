@@ -1,8 +1,9 @@
 # Third-party notices
 
 - **KeyboardKit** — MIT License. https://github.com/KeyboardKit/KeyboardKit
-- **Norvig n-gram data** (`ngrams_en.json` bigrams source, `unigrams_en.txt`) —
-  derived from Peter Norvig's "Natural Language Corpus Data" (Google Web 1T
-  derived). Public domain. https://norvig.com/ngrams/
+- **Next-word data** (`ngrams_*.json`, `unigrams_en.txt`) — bigram/unigram
+  frequencies derived from the OPUS OpenSubtitles v2018 corpus, built with
+  `scripts/build_ngrams.py`. https://opus.nlpl.eu/OpenSubtitles-v2018.php
+  (Lison & Tiedemann, LREC 2016).
 - **UITextChecker / Apple Translation** — Apple system frameworks, used under the
   iOS SDK terms.
