@@ -60,7 +60,7 @@ struct ChipToolbar: View {
                 .foregroundStyle(.primary)
             if let sub = s.subtitle, !sub.isEmpty {
                 Text("(\(sub))")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
             }
         }
         .font(.system(size: 16, weight: .regular))

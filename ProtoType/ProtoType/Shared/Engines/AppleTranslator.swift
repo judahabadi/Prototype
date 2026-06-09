@@ -69,9 +69,25 @@ final class AppleTranslator {
         }
     }
 
-    /// Cached gloss for a word, or nil if not translated yet.
+    /// Cached gloss for a word, or nil if not translated yet. The gloss is
+    /// re-cased to match the word it glosses (so `Wrong → (Incorrecto)`,
+    /// `WRONG → (INCORRECTO)`, `wrong → (incorrecto)`).
     func translation(for word: String) -> String? {
-        cache[word.lowercased()]
+        guard let gloss = cache[word.lowercased()] else { return nil }
+        return Self.matchingCase(gloss, to: word)
+    }
+
+    /// Cap the gloss to the source word's casing: ALL CAPS, Capitalized, or
+    /// lowercase (the common case for mid-sentence typing).
+    private static func matchingCase(_ gloss: String, to word: String) -> String {
+        guard let first = word.first else { return gloss }
+        if word.contains(where: { $0.isLetter }), word == word.uppercased(), word != word.lowercased() {
+            return gloss.uppercased()
+        }
+        if first.isUppercase {
+            return gloss.prefix(1).uppercased() + gloss.dropFirst()
+        }
+        return gloss.lowercased()
     }
 
     /// Translate any of these words we don't already have a gloss for.
