@@ -75,7 +75,7 @@ struct ChipToolbar: View {
         }
         .contentShape(Rectangle())
         .onTapGesture { pick(index) }
-        .onLongPressGesture(minimumDuration: 0.35) { pickTranslation(index) }
+        .onLongPressGesture(minimumDuration: 0.3) { pickTranslation(index) }
     }
 
     // MARK: - Adaptive fitting
