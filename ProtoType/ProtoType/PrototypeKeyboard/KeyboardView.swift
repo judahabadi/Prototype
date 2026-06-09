@@ -68,7 +68,9 @@ struct ChipToolbar: View {
     /// The single source of truth for the bar height — drives both KeyboardKit's
     /// reserved toolbar slot (via `.autocompleteToolbarStyle`) and our content.
     /// Apple's bar is a fixed height across iPhones, so one value is uniform.
-    static let barHeight: CGFloat = 40
+    /// Measured Apple's QuickType bar at ~49pt (@3x); 46 renders ~49 after the
+    /// slot's padding, matching Apple. Content is centered via maxHeight below.
+    static let barHeight: CGFloat = 46
 
     var body: some View {
         HStack(spacing: 0) {
