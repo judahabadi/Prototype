@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -36,14 +37,58 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             | xcpretty && exit ${PIPESTATUS[0]}
 
-      - name: Test
+      - name: Pick a simulator
+        id: sim
+        run: |
+          INFO=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys,re
+          d=json.load(sys.stdin)['devices']
+          best=None
+          for rt,devs in d.items():
+              m=re.search(r'iOS-(\d+)-(\d+)', rt)
+              if not m: continue
+              ver=(int(m.group(1)),int(m.group(2)))
+              for dev in devs:
+                  if 'iPhone' in dev.get('name','') and dev.get('isAvailable',True):
+                      if best is None or ver>best[0]: best=(ver,dev['udid'])
+          print(f'{best[1]} {best[0][0]}.{best[0][1]}' if best else ' ')
+          ")
+          DEVICE_ID=$(echo "$INFO" | cut -d' ' -f1)
+          OS_VER=$(echo "$INFO" | cut -d' ' -f2)
+          echo "Using simulator $DEVICE_ID (iOS $OS_VER)"
+          echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
+          echo "os_ver=$OS_VER" >> "$GITHUB_OUTPUT"
+
+      - name: Test (+ bar snapshots)
         run: |
           xcodebuild test \
             -project ProtoType/ProtoType/ProtoType.xcodeproj \
             -scheme ProtoType \
-            -destination 'generic/platform=iOS Simulator' \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}" \
+            -resultBundlePath TestResults.xcresult \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             | xcpretty && exit ${PIPESTATUS[0]}
         continue-on-error: true
+
+      - name: Export bar snapshots
+        if: always()
+        run: |
+          mkdir -p snapshots
+          # Xcode 16+ syntax first; fall back to the legacy form.
+          xcrun xcresulttool export attachments \
+            --path TestResults.xcresult \
+            --output-path snapshots 2>/dev/null \
+          || xcrun xcresulttool export --type attachments \
+            --path TestResults.xcresult --output-path snapshots 2>/dev/null \
+          || echo "attachment export failed"
+          ls -R snapshots || true
+
+      - name: Upload bar snapshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bar-snapshots
+          path: snapshots
+          if-no-files-found: warn
