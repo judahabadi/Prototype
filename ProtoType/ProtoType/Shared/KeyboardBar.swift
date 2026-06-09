@@ -27,9 +27,9 @@ struct ChipToolbar: View {
     var pick: (Int) -> Void = { _ in }
     var pickTranslation: (Int) -> Void = { _ in }
 
-    /// Single source of truth for the bar height. Apple's QuickType bar measures
-    /// ~49pt (@3x); 46 renders ~49 after KeyboardKit's reserved-slot padding.
-    static let barHeight: CGFloat = 46
+    /// Single source of truth for the bar height (the toolbar view is framed to
+    /// this in the keyboard). Apple's QuickType bar measures ~49pt (@3x).
+    static let barHeight: CGFloat = 50
 
     private static let font = UIFont.systemFont(ofSize: 16)
     private static let chipHorizontalPadding: CGFloat = 24   // 12pt each side

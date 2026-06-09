@@ -35,6 +35,11 @@ struct ProtoTypeKeyboardView: View {
                     pick: { apply($0, translation: false) },
                     pickTranslation: { apply($0, translation: true) }
                 )
+                // Force the bar's height. A custom toolbar is sized by its content
+                // (so it rendered short, sitting on the keys); .autocompleteToolbarStyle
+                // only sizes KeyboardKit's own toolbar, not ours.
+                .frame(height: ChipToolbar.barHeight)
+                .frame(maxWidth: .infinity)
                 .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
             }
         )
