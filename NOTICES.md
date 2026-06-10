@@ -7,3 +7,5 @@
   (Lison & Tiedemann, LREC 2016).
 - **UITextChecker / Apple Translation** — Apple system frameworks, used under the
   iOS SDK terms.
+- **Inter** (`Fonts/Inter-*.ttf`) — SIL Open Font License 1.1.
+  Copyright (c) 2016 The Inter Project Authors. https://github.com/rsms/inter
