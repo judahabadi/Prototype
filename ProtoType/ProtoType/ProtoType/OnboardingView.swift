@@ -251,6 +251,26 @@ private struct SetupScreen: View {
             }
             .padding(.horizontal, 24)
 
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "lock.shield.fill")
+                    .font(.system(size: 22))
+                    .foregroundStyle(.green)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Why Full Access?")
+                        .font(.system(size: 15, weight: .semibold))
+                    Text("It only lets the keyboard sync your language settings with the app. Translations run on-device with Apple Translation — nothing you type is ever sent to ProtoType's servers.")
+                        .font(.system(size: 13))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .padding(.horizontal, 24)
+            .padding(.top, 16)
+
             Spacer()
 
             VStack(spacing: 12) {
