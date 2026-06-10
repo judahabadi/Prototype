@@ -17,7 +17,6 @@ struct OnboardingView: View {
                     case 1:
                         AccountFlowView(
                             onComplete: { advance(to: 2) },
-                            onSkip: { advance(to: 2) },
                             onBack: { advance(to: 0) }
                         )
                     case 2:
@@ -289,10 +288,6 @@ private struct SetupScreen: View {
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity)
                 }
-
-                Button("I'll do this later", action: onContinue)
-                    .font(.system(size: 16))
-                    .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 44)

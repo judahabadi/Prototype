@@ -2,10 +2,9 @@ import SwiftUI
 
 /// Create Account / Sign In screens from the onboarding design.
 /// UI-only for now: no auth backend is wired up — every path simply
-/// calls `onComplete` (or `onSkip`) so onboarding can continue.
+/// calls `onComplete` so onboarding can continue.
 struct AccountFlowView: View {
     let onComplete: () -> Void
-    let onSkip: () -> Void
     let onBack: () -> Void
 
     private enum Mode { case create, signIn, email }
@@ -84,11 +83,6 @@ struct AccountFlowView: View {
                 }
                 .font(.system(size: 15))
                 .padding(.top, 8)
-
-                Button("Skip for now", action: onSkip)
-                    .font(.system(size: 15))
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 2)
             }
         }
         .padding(.horizontal, 24)
@@ -237,5 +231,5 @@ struct AccountFlowView: View {
 }
 
 #Preview {
-    AccountFlowView(onComplete: {}, onSkip: {}, onBack: {})
+    AccountFlowView(onComplete: {}, onBack: {})
 }
