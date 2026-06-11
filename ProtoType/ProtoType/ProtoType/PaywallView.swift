@@ -89,7 +89,7 @@ struct PaywallView: View {
                             ProgressView()
                                 .tint(.white)
                         } else {
-                            Text(isHardBlock ? "Subscribe — $4.99/month" : "Start Free — then $4.99/month")
+                            Text(isHardBlock ? "Subscribe — $4.99/month" : "Try 3 Days Free — then $4.99/month")
                                 .font(.system(size: 17, weight: .semibold))
                         }
                     }

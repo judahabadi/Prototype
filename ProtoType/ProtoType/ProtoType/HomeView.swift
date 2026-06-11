@@ -157,7 +157,7 @@ private struct HomeTab: View {
                                 Text("Upgrade to Premium")
                                     .font(.system(size: 16))
                                     .foregroundStyle(.primary)
-                                Text("$4.99/month after free trial")
+                                Text("$4.99/month after 3-day free trial")
                                     .font(.system(size: 13))
                                     .foregroundStyle(.secondary)
                             }
