@@ -7,7 +7,7 @@ struct ContentView: View {
     var body: some View {
         Group {
             if manager.shouldShowPaywall {
-                PaywallView()
+                PaywallView(isHardBlock: true)
             } else if appState.hasCompletedOnboarding {
                 HomeView()
                     .environment(appState)

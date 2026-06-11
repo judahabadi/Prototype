@@ -180,6 +180,12 @@ private struct FeatureRow: View {
 private struct LanguageScreen: View {
     @Environment(AppState.self) private var appState
     let onContinue: () -> Void
+    @State private var pickerSide: PickerSide?
+
+    private enum PickerSide: Identifiable {
+        case native, target
+        var id: Self { self }
+    }
 
     var body: some View {
         @Bindable var state = appState
@@ -199,8 +205,8 @@ private struct LanguageScreen: View {
             .padding(.bottom, 32)
 
             VStack(alignment: .leading, spacing: 16) {
-                LanguageRow(title: "I speak", selection: $state.nativeLanguage)
-                LanguageRow(title: "I'm learning", selection: $state.targetLanguage)
+                PickerRow(title: "I speak", language: appState.nativeLanguage) { pickerSide = .native }
+                PickerRow(title: "I'm learning", language: appState.targetLanguage) { pickerSide = .target }
                 if samePair {
                     Text("Pick two different languages to continue.")
                         .font(.system(size: 13))
@@ -216,6 +222,48 @@ private struct LanguageScreen: View {
             PrimaryButton(title: "Continue", disabled: samePair, action: onContinue)
                 .padding(.horizontal, 24)
                 .padding(.bottom, 44)
+        }
+        .sheet(item: $pickerSide) { side in
+            switch side {
+            case .native:
+                LanguagePickerSheet(title: "I speak", selection: $state.nativeLanguage,
+                                    other: appState.targetLanguage)
+            case .target:
+                LanguagePickerSheet(title: "I'm learning", selection: $state.targetLanguage,
+                                    other: appState.nativeLanguage)
+            }
+        }
+    }
+}
+
+private struct PickerRow: View {
+    let title: String
+    let language: Language
+    let action: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.system(size: 14))
+                .foregroundStyle(.secondary)
+
+            Button(action: action) {
+                HStack(spacing: 10) {
+                    Text(language.flag)
+                        .font(.system(size: 22))
+                    Text(language.displayName)
+                        .font(.system(size: 17))
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(14)
+                .background(Color(.secondarySystemGroupedBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+            .buttonStyle(.plain)
         }
     }
 }
@@ -356,47 +404,5 @@ private struct DoneOverlay: View {
         .padding(40)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(.systemGroupedBackground))
-    }
-}
-
-// MARK: - Shared picker row
-
-struct LanguageRow: View {
-    let title: String
-    @Binding var selection: Language
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-
-            Menu {
-                ForEach(Language.allCases) { lang in
-                    Button {
-                        selection = lang
-                    } label: {
-                        if lang == selection {
-                            Label("\(lang.flag) \(lang.displayName)", systemImage: "checkmark")
-                        } else {
-                            Text("\(lang.flag) \(lang.displayName)")
-                        }
-                    }
-                }
-            } label: {
-                HStack {
-                    Text("\(selection.flag) \(selection.displayName)")
-                        .font(.body)
-                        .foregroundStyle(.primary)
-                    Spacer()
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(14)
-                .background(Color(.secondarySystemGroupedBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-            }
-        }
     }
 }

@@ -20,6 +20,18 @@ final class AppState {
         set { AppGroup.defaults.set(newValue.rawValue, forKey: AppGroup.targetKey) }
     }
 
+    var hapticFeedback: Bool {
+        get { AppGroup.defaults.object(forKey: AppGroup.hapticsKey) == nil
+              ? true
+              : AppGroup.defaults.bool(forKey: AppGroup.hapticsKey) }
+        set { AppGroup.defaults.set(newValue, forKey: AppGroup.hapticsKey) }
+    }
+
+    var keyboardClicks: Bool {
+        get { AppGroup.defaults.bool(forKey: AppGroup.clicksKey) }
+        set { AppGroup.defaults.set(newValue, forKey: AppGroup.clicksKey) }
+    }
+
     func refreshKeyboardStatus() {
         keyboardHasLoaded = AppGroup.defaults.bool(forKey: "keyboardDidLoad")
     }

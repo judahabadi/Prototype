@@ -90,6 +90,8 @@ enum AppGroup {
     static let id = "group.harrykhizer.ProtoType"
     static let nativeKey = "nativeLanguage"
     static let targetKey = "targetLanguage"
+    static let hapticsKey = "hapticFeedback"
+    static let clicksKey = "keyboardClicks"
     static let onboardingDismissedKey = "onboardingDismissed"
 
     static var defaults: UserDefaults {

@@ -32,8 +32,20 @@ final class KeyboardViewController: KeyboardInputViewController, UIInputViewAudi
         state.autocompleteContext.settings.isToolbarEnabled = true
         state.autocompleteContext.settings.isAutocorrectEnabled = true
 
+        applyFeedbackSettings()
         loadEngines()
         installAutocompleteService()
+    }
+
+    /// Haptics (default on) and key clicks (default off) are user settings in
+    /// the host app, shared via the App Group.
+    private func applyFeedbackSettings() {
+        let defaults = AppGroup.defaults
+        let haptics = defaults.object(forKey: AppGroup.hapticsKey) == nil
+            ? true
+            : defaults.bool(forKey: AppGroup.hapticsKey)
+        state.feedbackContext.settings.isHapticFeedbackEnabled = haptics
+        state.feedbackContext.settings.isAudioFeedbackEnabled = defaults.bool(forKey: AppGroup.clicksKey)
     }
 
     /// Load the bundled English next-word set (once). Translation no longer
@@ -82,6 +94,7 @@ final class KeyboardViewController: KeyboardInputViewController, UIInputViewAudi
             kbState.targetLanguage = langs.target
             reloadForLanguageChange()
         }
+        applyFeedbackSettings()
     }
 
     override func viewWillSetupKeyboardView() {
@@ -102,5 +115,5 @@ final class KeyboardViewController: KeyboardInputViewController, UIInputViewAudi
     // MARK: - UIInputViewAudioFeedback
 
     func playInputClick() { UIDevice.current.playInputClick() }
-    var enableInputClicksWhenVisible: Bool { true }
+    var enableInputClicksWhenVisible: Bool { AppGroup.defaults.bool(forKey: AppGroup.clicksKey) }
 }
