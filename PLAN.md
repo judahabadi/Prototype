@@ -159,13 +159,32 @@ user's original word.** (Gboard/SwiftKey behavior.)
 - Explicitly skipped: frequency boosting of user's repeated words (revisit
   only if autocorrect quality complaints demand it)
 
-## ⏳ 10. Complex-script input (hi/bn/pa/ar)
-Direction agreed: DIY static key→codepoint maps; copy Keyman's MIT layout
-tables (data only, no Keyman code). OS does shaping. Not yet locked.
+## 🔒 10. Complex-script input (hi/bn/pa/ar)
 
-## ⏳ 11. CJK input (zh/ja)
-Direction agreed: jieba (MIT) / IPADIC (BSD) segmentation + frequency.
-Not yet locked.
+**Decision: DIY static key→codepoint maps; copy Keyman's MIT layout tables
+(data only — zero Keyman code ships).**
+
+- InScript layouts for Hindi/Bengali/Punjabi, standard Arabic 101/102
+- Emit codepoints in logical order; CoreText/OS does ALL shaping (conjuncts,
+  matras, Arabic joining, lam-alef) — verified
+- MIT sources to copy: keymanapp/keyboards basic_kbdinhin / basic_kbdinben /
+  basic_kbdinpun / basic_kbda1
+- Gotchas: codepoint-wise backspace (use unicodeScalars, not grapheme
+  clusters), dotted-circle ◌ base for matra keycaps, AltGr layer for rare
+  chars, ZWJ/ZWNJ keys optional
+- Revisit Keyman (JS-in-JSC hack) ONLY if phonetic input (namaste→नमस्ते)
+  becomes a requirement
+
+## 🔒 11. CJK input (zh/ja)
+
+**Decision: own pipeline — jieba dict (MIT) for Mandarin pinyin, IPADIC/
+UniDic-BSD for Japanese, + existing frequency ranker.**
+
+- Separate subsystem from the Latin pipeline; SymSpell/edit-distance does not
+  apply
+- Mandarin: pinyin input → candidate characters/words ranked by frequency
+- Japanese: romaji→kana mapping + kana→kanji candidates (IPADIC data)
+- Phase: built AFTER Latin + Indic/Arabic languages ship (execution order #5)
 
 ## 🔒 12. Word completion (prefix)
 
@@ -179,13 +198,26 @@ Not yet locked.
 - Later: n-gram (#4) re-ranks completions by context
 - zh/ja excluded (no prefix completion in the Latin sense — #11 pipeline)
 
-## ⏳ 13. Learn-English: English → native hint (Mode A)
-Direction agreed: own bilingual word dict; CC-CEDICT for zh (CC-BY-SA ⚠️);
-ar/Indic data needs sourcing. Word-level only. Not yet locked.
+## 🔒 13. Learn-English: English → native hint (Mode A)
 
-## ⏳ 14. Learn-English: native → English (Mode B)
-Direction agreed: pinyin→English phase 2; Arabizi→English phase 3 (data weak).
-Not yet locked.
+**Decision: own bilingual word dictionary, word-level only, all 12 langs.**
+
+- Type English → see meaning in user's language above the word
+- Data: CC-CEDICT for zh (CC-BY-SA ⚠️ same legal glance as wordfreq);
+  Wiktionary dumps as candidate source for ar/Indic (needs sourcing pass)
+- Word-level only — NOT sentence translation (doesn't fit offline/40MB);
+  sentence-level arrives via the #4 cloud layer at 10k users
+- Ships per-language as data files, loaded with the active language
+
+## 🔒 14. Learn-English: native → English (Mode B)
+
+**Decision: phased. Pinyin→English (zh) = phase 2; Arabizi→English (ar) =
+phase 3.**
+
+- Type your way (pingguo / tuffaha) → English word suggested
+- zh first: pinyin→English via CC-CEDICT (well-trodden path)
+- ar later: Arabizi data is thin — needs sourcing before commitment
+- Other languages: only if A-mode usage proves demand
 
 ---
 
