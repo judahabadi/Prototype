@@ -42,8 +42,18 @@ phrase caps (Wikidata), CJK (#11).
 
 ---
 
-## ⏳ 2. Contractions (wont → won't)
-Direction agreed: own curated map (~50/lang), context-gated. Not yet locked.
+## 🔒 2. Contractions (wont → won't)
+
+**Decision: own curated replacement map.**
+
+- Per-language map, ~50 entries (en: wont→won't, cant→can't, im→I'm,
+  dont→don't, its→it's …; fr: elisions; es/pt/de/ru: small or empty)
+- Runs BEFORE/independent of SymSpell — these are real words, edit distance
+  can't catch them (wont = valid word, distance 0)
+- Ambiguous ones (its/it's, well/we'll) gated by n-gram context (#4) once it
+  exists; until then suggest-don't-replace for those
+- Plain data file per language, ships in bundle. ~30 lines of code.
+- Not applicable: zh/ja/hi/bn/pa/ar (no apostrophe contractions)
 
 ## ⏳ 3. Capitalization (autocap, i→I)
 Direction agreed: own rule layer. Not yet locked.
