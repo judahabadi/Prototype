@@ -74,9 +74,29 @@ phrase caps (Wikidata), CJK (#11).
 - Applies to: en, es, fr, pt, de, ru only. Skip: zh, ja, ar, hi, bn, pa
   (no capitals)
 
-## ⏳ 4. Next-word prediction
-Direction agreed: own per-language quantized trigram n-gram (wordfreq data,
-mmap'd, marisa-backed). Not yet locked.
+## 🔒 4. Next-word prediction
+
+**Decision: own n-gram now. Cloud LLM deferred until ~10k users.**
+
+Phase 1 (now — offline core):
+- Per-language quantized trigram n-gram model, built from wordfreq data
+  (CC-BY-SA ⚠️ one-time legal glance)
+- Stored compact (marisa-trie or own binary format — NOT KenLM-linked, LGPL),
+  mmap'd, one language resident at a time
+- Same model answers prefix completion ranking with the trie (#12)
+- Context gate for contractions (#2) ambiguous cases (its/it's)
+
+Phase 2 (at ~10k users — online upgrade layer):
+- Cloud LLM (Haiku-class, e.g. claude-haiku-4-5: $1/M in, $5/M out)
+- ONLY for big moments: sentence completion (ghost text), whole-message
+  fix-up, learn-English hints. Debounced, ~50 calls/user/day ≈ $0.15/user/mo
+- NEVER per keystroke (200–500ms latency + cost kills it)
+- Requires network + Full Access; silent upgrade, n-gram remains the floor
+
+Ruled out: Keyman (WebView lock-in, no context model), KeyboardKit Gold
+($500/mo), Fleksy Core SDK ($269+/mo to ship — revisit only if n-gram quality
+disappoints AND subscriber math supports it; free tier exists for testing),
+Apple (blocked for 3rd-party keyboards), offline neural (won't fit ~40MB).
 
 ## ⏳ 5. Smart punctuation
 Direction agreed: own rules (~30 lines). Not yet locked.
