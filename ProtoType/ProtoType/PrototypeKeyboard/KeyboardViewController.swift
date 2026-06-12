@@ -32,6 +32,11 @@ final class KeyboardViewController: KeyboardInputViewController, UIInputViewAudi
         state.autocompleteContext.settings.isToolbarEnabled = true
         state.autocompleteContext.settings.isAutocorrectEnabled = true
 
+        // Auto-capitalization is a persisted (@AppStorage) setting too; if an
+        // earlier build wrote it false it stays false, so force it on — same
+        // class of bug as isToolbarEnabled above. Drives sentence-start caps.
+        state.keyboardContext.settings.isAutocapitalizationEnabled = true
+
         applyFeedbackSettings()
         loadEngines()
         installAutocompleteService()
