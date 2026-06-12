@@ -167,9 +167,17 @@ tables (data only, no Keyman code). OS does shaping. Not yet locked.
 Direction agreed: jieba (MIT) / IPADIC (BSD) segmentation + frequency.
 Not yet locked.
 
-## ⏳ 12. Word completion (prefix)
-Direction agreed: keep existing trie, store in marisa-trie (BSD leg).
-Not yet locked.
+## 🔒 12. Word completion (prefix)
+
+**Decision: keep existing trie logic, move storage to marisa-trie.**
+
+- Keep: prefix-lookup logic, frequency ranking (existing in-house)
+- Change: storage → marisa-trie (s-yata/marisa-trie, BSD-2 leg), 50–100×
+  smaller than in-RAM sorted array — frees budget for SymSpell (#1) and
+  n-gram (#4) under the ~40MB cap
+- C++ lib, small Swift bridging layer
+- Later: n-gram (#4) re-ranks completions by context
+- zh/ja excluded (no prefix completion in the Latin sense — #11 pipeline)
 
 ## ⏳ 13. Learn-English: English → native hint (Mode A)
 Direction agreed: own bilingual word dict; CC-CEDICT for zh (CC-BY-SA ⚠️);
