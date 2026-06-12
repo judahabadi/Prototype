@@ -219,6 +219,22 @@ phase 3.**
 - ar later: Arabizi data is thin — needs sourcing before commitment
 - Other languages: only if A-mode usage proves demand
 
+## 🔒 15. Keyboard key grids (per-language layouts)
+
+**Decision: one SwiftUI grid engine + per-language layout files. 6 grids
+cover all 12 languages.**
+
+- Apple provides NO keys to custom keyboards — we draw every key
+- Grids: QWERTY+accents (en/es/pt + zh/ja input), AZERTY (fr), QWERTZ (de),
+  ЙЦУКЕН (ru), Arabic RTL (ar), InScript (hi/bn/pa — 1 layout, 3 char sets)
+- zh/ja have NO native grid: pinyin/romaji typed on QWERTY → candidate bar
+  (#11) shows characters
+- One reusable grid component: rows, key sizing, shift/space/globe/return,
+  symbol layer, long-press accent popups
+- Layout data: KeyboardKit open-source (MIT, iOS-style layouts) + Keyman MIT
+  tables (#10) + published standards (InScript/ЙЦУКЕН/Arabic 101)
+- Globe key cycles user's enabled languages; grid swaps with dictionary
+
 ---
 
 ## Cross-cutting (apply to all)
