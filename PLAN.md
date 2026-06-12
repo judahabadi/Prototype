@@ -98,8 +98,20 @@ Ruled out: Keyman (WebView lock-in, no context model), KeyboardKit Gold
 disappoints AND subscriber math supports it; free tier exists for testing),
 Apple (blocked for 3rd-party keyboards), offline neural (won't fit ~40MB).
 
-## ⏳ 5. Smart punctuation
-Direction agreed: own rules (~30 lines). Not yet locked.
+## 🔒 5. Smart punctuation
+
+**Decision: own rule layer + per-language punctuation table.**
+
+- Rules: double-space → ". ", straight → curly quotes, "--" → "—",
+  auto-space cleanup around punctuation
+- Per-language quote/punct table (crib from KeyboardKit open-source, MIT):
+  en "…", de „…", fr « … » (spaces inside), ja 「…」, ar «…»
+- Arabic native marks: ، ؟ ؛ + RTL behavior (part of the RTL requirement)
+- Respect the field's smartQuotesType/smartDashesType when the app disables
+  them (never curl quotes in code editors)
+- User off-switch in settings
+- Field traits auto-applying from custom keyboards is unreliable — do the
+  substitution ourselves, verify no double-transformation on device
 
 ## ⏳ 6. Smart/context AI prediction
 Direction agreed: n-gram is offline ceiling; cloud LLM only as silent
