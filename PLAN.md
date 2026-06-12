@@ -55,8 +55,24 @@ phrase caps (Wikidata), CJK (#11).
 - Plain data file per language, ships in bundle. ~30 lines of code.
 - Not applicable: zh/ja/hi/bn/pa/ar (no apostrophe contractions)
 
-## ⏳ 3. Capitalization (autocap, i→I)
-Direction agreed: own rule layer. Not yet locked.
+## 🔒 3. Capitalization (autocap, i→I, World Cup)
+
+**Decision: own rule layer, Apple supplies the trigger, MIT code as reference.**
+
+- Trigger: respect the field's `autocapitalizationType` via
+  `textDocumentProxy.documentContextBeforeInput` traits
+  (sentences/words/allCharacters/none) — Apple gives the signal free
+- Logic: own ~20 lines — sentence start, standalone i→I, after ". "
+- Reference code: KeyboardKit open-source base (MIT) autocap logic — copy,
+  don't depend
+- Edge cases: small per-language abbreviation list ("Dr.", "e.g.", "z.B.")
+  so they don't trigger sentence-caps
+- Proper nouns + phrases (paris→Paris, world cup→World Cup): phrase dict
+  built from Wikidata labels (CC0), last 2–3 words lookup
+- German noun capitalization: NOT rule-feasible; rely on dictionary casing
+  in suggestions, don't auto-force
+- Applies to: en, es, fr, pt, de, ru only. Skip: zh, ja, ar, hi, bn, pa
+  (no capitals)
 
 ## ⏳ 4. Next-word prediction
 Direction agreed: own per-language quantized trigram n-gram (wordfreq data,
