@@ -118,8 +118,19 @@ Apple (blocked for 3rd-party keyboards), offline neural (won't fit ~40MB).
 **Decision: merged into #4.** N-gram is the offline ceiling; the cloud LLM
 phase-2 layer in #4 IS the smart prediction. No separate work item.
 
-## ⏳ 7. Revert-on-backspace (undo autocorrect)
-Direction agreed: own, critical UX. Not yet locked.
+## 🔒 7. Revert-on-backspace (undo autocorrect)
+
+**Decision: Style A — backspace immediately after a correction restores the
+user's original word.** (Gboard/SwiftKey behavior.)
+
+- State: remember last correction `{typed, replaced, range}` — one struct
+- Backspace right after autocorrect → restore the original typed word exactly
+- Invalidate the moment the user types anything else, taps elsewhere, or moves
+  the cursor (cursor-move bug otherwise undoes wrong text)
+- One level only — no undo history stack
+- Re-learn signal: a revert feeds personalization (#9) — revert same word
+  twice → add to user dictionary so we stop correcting it
+- No vendor; own build, critical UX. ~30 lines + the invalidation guards
 
 ## ⏳ 8. Auto-spacing
 Direction agreed: own. Not yet locked.
