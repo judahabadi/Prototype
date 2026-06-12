@@ -113,9 +113,10 @@ Apple (blocked for 3rd-party keyboards), offline neural (won't fit ~40MB).
 - Field traits auto-applying from custom keyboards is unreliable — do the
   substitution ourselves, verify no double-transformation on device
 
-## ⏳ 6. Smart/context AI prediction
-Direction agreed: n-gram is offline ceiling; cloud LLM only as silent
-Full-Access upgrade. Not yet locked.
+## 🔒 6. Smart/context AI prediction
+
+**Decision: merged into #4.** N-gram is the offline ceiling; the cloud LLM
+phase-2 layer in #4 IS the smart prediction. No separate work item.
 
 ## ⏳ 7. Revert-on-backspace (undo autocorrect)
 Direction agreed: own, critical UX. Not yet locked.
