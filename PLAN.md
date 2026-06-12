@@ -132,8 +132,19 @@ user's original word.** (Gboard/SwiftKey behavior.)
   twice → add to user dictionary so we stop correcting it
 - No vendor; own build, critical UX. ~30 lines + the invalidation guards
 
-## ⏳ 8. Auto-spacing
-Direction agreed: own. Not yet locked.
+## 🔒 8. Auto-spacing
+
+**Decision: prediction tap inserts word + trailing space.**
+
+- Accepting a prediction/correction from the bar → insert word + one space,
+  user keeps typing immediately (Gboard/Apple behavior)
+- Backspace right after accepting → remove word + its added space together
+  (reuses the #7 last-action struct)
+- Collapse accidental double spaces from the insertion (typing "," after an
+  auto-space → "word, " not "word , ")
+- Double-space → ". " lives in #5 (punctuation), not here
+- CJK exception: NO auto-space for zh/ja (no spaces between words)
+- Own build, no vendor
 
 ## ⏳ 9. Personalization (learn user words)
 Direction agreed: own — writable user dict in App Group + frequency ranker.
