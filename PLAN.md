@@ -146,9 +146,18 @@ user's original word.** (Gboard/SwiftKey behavior.)
 - CJK exception: NO auto-space for zh/ja (no spaces between words)
 - Own build, no vendor
 
-## ⏳ 9. Personalization (learn user words)
-Direction agreed: own — writable user dict in App Group + frequency ranker.
-Not yet locked.
+## 🔒 9. Personalization
+
+**Decision: MINIMAL — "don't-correct" list only. No typing-history learning.**
+
+- Revert same word twice (#7 signal) → add to don't-correct list; autocorrect
+  never touches that word again
+- One small wordlist in the App Group container, on-device only, never
+  uploaded. No frequency learning, no habit tracking
+- "Clear list" button in settings
+- Privacy claim stays: "we collect nothing — everything stays on your device"
+- Explicitly skipped: frequency boosting of user's repeated words (revisit
+  only if autocorrect quality complaints demand it)
 
 ## ⏳ 10. Complex-script input (hi/bn/pa/ar)
 Direction agreed: DIY static key→codepoint maps; copy Keyman's MIT layout
