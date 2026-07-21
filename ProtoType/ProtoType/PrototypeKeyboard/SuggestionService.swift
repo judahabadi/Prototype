@@ -17,16 +17,19 @@ final class SuggestionService: AutocompleteService {
 
     var locale: Locale
     private let nextWord: NextWordEngine
+    private let symSpell: SymSpellEngine?
     private let autocorrect = AutocorrectEngine()
     private let language: () -> Language
 
     init(
         locale: Locale,
         nextWord: NextWordEngine,
+        symSpell: SymSpellEngine? = nil,
         language: @escaping () -> Language
     ) {
         self.locale = locale
         self.nextWord = nextWord
+        self.symSpell = symSpell
         self.language = language
     }
 
@@ -64,7 +67,15 @@ final class SuggestionService: AutocompleteService {
         out.append(Autocomplete.Suggestion(text: word, type: .unknown))
 
         // Autocorrect candidate (marked so KeyboardKit applies it on space).
-        let corrections = autocorrect.suggestions(word: word, language: language(), limit: 2)
+        // symSpell is English-only data, so only pass it when the active
+        // language is English — other languages keep the UITextChecker path.
+        let currentLanguage = language()
+        let corrections = autocorrect.suggestions(
+            word: word,
+            language: currentLanguage,
+            limit: 2,
+            symSpell: currentLanguage == .english ? symSpell : nil
+        )
         if let top = corrections.first {
             out.append(Autocomplete.Suggestion(text: top, type: .autocorrect))
         }

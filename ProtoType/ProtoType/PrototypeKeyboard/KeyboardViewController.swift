@@ -13,6 +13,8 @@ final class KeyboardViewController: KeyboardInputViewController, UIInputViewAudi
     var kbState: KeyboardState!
     private var nextWordEngine = NextWordEngine()
     private var didLoadNextWord = false
+    private var symSpellEngine: SymSpellEngine?
+    private var didLoadSymSpell = false
 
     override func viewDidLoad() {
         // Initialize state before super, since super may trigger view setup.
@@ -60,6 +62,10 @@ final class KeyboardViewController: KeyboardInputViewController, UIInputViewAudi
             nextWordEngine = english
             didLoadNextWord = true
         }
+        if !didLoadSymSpell, let english = SymSpellEngine.english() {
+            symSpellEngine = english
+            didLoadSymSpell = true
+        }
     }
 
     /// Install our autocomplete service. KeyboardKit calls it on
@@ -68,6 +74,7 @@ final class KeyboardViewController: KeyboardInputViewController, UIInputViewAudi
         services.autocompleteService = SuggestionService(
             locale: Locale(identifier: kbState.nativeLanguage.isoCode),
             nextWord: nextWordEngine,
+            symSpell: symSpellEngine,
             language: { [weak self] in self?.kbState.nativeLanguage ?? .english }
         )
     }

@@ -190,3 +190,32 @@ remain wired (functionally equal to the new Shared engines); a full swap is opti
 **Note:** `NOTICES.md` added (KeyboardKit MIT, OpenSubtitles next-word data). The temporary
 `bypassPaywallForTesting` flag merged earlier (PR #32) is still on `main` — set it back to
 false before shipping.
+
+---
+
+## 2026-07-21
+
+### SymSpell wired into AutocorrectEngine (branch `claude/symspell-app-finish-ounagn`)
+
+PLAN.md issue 1 required an on-device memory benchmark (`SymSpellBenchmarkTests`) before
+wiring `SymSpellEngine` into `AutocorrectEngine` — this session has no macOS/Xcode/device,
+so the gate can't be run here. **User decision: skip the on-device gate and wire it in now
+with the existing defaults (`maxEditDistance=2`, `prefixLength=7`), plus trigger the CI
+simulator run for rough (not authoritative) numbers.**
+
+- `AutocorrectEngine.suggestions`/`correct` take an optional `symSpell: SymSpellEngine?`.
+  When present: SymSpell delete-lookup for candidates → `weightedDistance` (QWERTY) re-rank →
+  frequency tie-break → top result. Falls back to `UITextChecker` when SymSpell finds no
+  candidates (the plan's "safety net"). Passing `nil` (default) is byte-identical to the old
+  behavior.
+- `SymSpellEngine.english()` mirrors `NextWordEngine.english()` — loads the bundled
+  `unigrams_en.txt` once.
+- **English only.** `unigrams_en.txt` is the only bundled unigram frequency file — es/fr/pt/
+  ru/de/hi/ar have no wordlists to build a SymSpell index from yet, so `SuggestionService`
+  only passes `symSpell` through when the active language is English; every other language is
+  unchanged (still plain `UITextChecker`). Sourcing per-language unigram lists is unstarted
+  work, not done in this session.
+- Real on-device memory/latency numbers for the ~40MB budget are still outstanding — only a
+  CI-simulator proxy run exists (see CI run for this branch), which does not confirm the
+  device-jetsam budget. Treat the gate as still open until someone runs
+  `SymSpellBenchmarkTests` on a physical iPhone.

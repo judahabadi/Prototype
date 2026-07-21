@@ -21,16 +21,42 @@ struct AutocorrectEngine {
 
     /// Top correction for a misspelled word, or nil if it is spelled correctly
     /// or is a known personal/lexicon word.
-    func correct(word: String, language: Language, lexicon: Set<String> = []) -> String? {
-        guard let guesses = guesses(for: word, language: language, lexicon: lexicon) else { return nil }
-        return reranked(guesses, typed: word).first
+    ///
+    /// `symSpell`, when passed, is tried first (PLAN.md issue 1 pipeline):
+    /// SymSpell delete-lookup for candidates, our QWERTY-weighted distance to
+    /// re-rank, frequency to break ties. `UITextChecker` is the fallback when
+    /// SymSpell has no candidates for a word it doesn't itself recognize.
+    func correct(word: String, language: Language, lexicon: Set<String> = [], symSpell: SymSpellEngine? = nil) -> String? {
+        suggestions(word: word, language: language, limit: 1, lexicon: lexicon, symSpell: symSpell).first
     }
 
     /// Ranked correction candidates for a misspelled word; empty when the word
     /// is spelled correctly or is a known personal/lexicon word.
-    func suggestions(word: String, language: Language, limit: Int = 2, lexicon: Set<String> = []) -> [String] {
+    func suggestions(word: String, language: Language, limit: Int = 2, lexicon: Set<String> = [], symSpell: SymSpellEngine? = nil) -> [String] {
+        guard !word.isEmpty, !lexicon.contains(word.lowercased()) else { return [] }
+
+        if let symSpell {
+            if symSpell.contains(word) { return [] }   // SymSpell knows it's a real word — don't correct.
+            let candidates = symSpell.lookup(word)
+            if !candidates.isEmpty {
+                return rerankedCandidates(candidates, typed: word).prefix(limit).map(\.word)
+            }
+            // Fall through to UITextChecker as the safety net.
+        }
+
         guard let guesses = guesses(for: word, language: language, lexicon: lexicon) else { return [] }
         return Array(reranked(guesses, typed: word).prefix(limit))
+    }
+
+    /// Re-order SymSpell candidates by keyboard-distance (typo-shape match),
+    /// breaking ties with corpus frequency — mirrors `reranked` for the
+    /// UITextChecker path.
+    private func rerankedCandidates(_ candidates: [SymSpellEngine.Candidate], typed: String) -> [SymSpellEngine.Candidate] {
+        guard candidates.count > 1 else { return candidates }
+        return candidates.sorted { a, b in
+            let da = weightedDistance(typed, a.word), db = weightedDistance(typed, b.word)
+            return da != db ? da < db : a.count > b.count
+        }
     }
 
     /// `UITextChecker` guesses for a word, or nil when the word is not flagged

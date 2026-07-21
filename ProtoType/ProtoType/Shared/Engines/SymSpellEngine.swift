@@ -66,6 +66,18 @@ final class SymSpellEngine {
 
     func contains(_ word: String) -> Bool { words[word.lowercased()] != nil }
 
+    /// Build the English engine from the bundled `unigrams_en.txt` (the same
+    /// file `NextWordEngine.english()` loads). Returns nil if the resource is
+    /// missing.
+    static func english(in bundle: Bundle = .main) -> SymSpellEngine? {
+        guard let url = bundle.url(forResource: "unigrams_en", withExtension: "txt"),
+              let text = try? String(contentsOf: url, encoding: .utf8)
+        else { return nil }
+        let engine = SymSpellEngine()
+        engine.load(unigramsText: text)
+        return engine
+    }
+
     // MARK: - Lookup
 
     /// Correction candidates for `input`, sorted by (edit distance, frequency).

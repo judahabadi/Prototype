@@ -64,6 +64,29 @@ struct AutocorrectEngineTests {
         // i->o adjacent should be cheaper than i->a (far).
         #expect(e.weightedDistance("wint", "wont") < e.weightedDistance("wint", "want"))
     }
+
+    // MARK: - SymSpell pipeline (PLAN.md issue 1)
+
+    private func symSpell() -> SymSpellEngine {
+        let e = SymSpellEngine(maxEditDistance: 2, prefixLength: 7)
+        e.load(unigrams: [("want", 1000), ("wont", 400), ("what", 900)])
+        return e
+    }
+
+    @Test func symSpellCandidateIsRerankedByKeyboardDistance() {
+        // "wint" is distance 1 from both "want" and "wont"; adjacent-key "wont" should win.
+        let result = AutocorrectEngine().suggestions(word: "wint", language: .english, symSpell: symSpell())
+        #expect(result.first == "wont")
+    }
+
+    @Test func symSpellKnownWordReturnsNoCorrection() {
+        #expect(AutocorrectEngine().suggestions(word: "want", language: .english, symSpell: symSpell()).isEmpty)
+    }
+
+    @Test func symSpellLexiconWordIsSkipped() {
+        let result = AutocorrectEngine().suggestions(word: "wint", language: .english, lexicon: ["wint"], symSpell: symSpell())
+        #expect(result.isEmpty)
+    }
 }
 
 struct TranslationEngineTests {
