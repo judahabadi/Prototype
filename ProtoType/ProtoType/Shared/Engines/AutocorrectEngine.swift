@@ -15,28 +15,54 @@ import UIKit
 /// target can all use it. The pure re-ranking helpers are `internal` (not
 /// `private`) so they can be unit-tested deterministically without depending on
 /// the OS dictionary's guess output.
+///
+/// PLAN.md issue 1: when a `SymSpellEngine` is supplied (English only, for
+/// now — it's the only language with a bundled word-frequency list), its
+/// delete-index candidates are the primary source, re-ranked the same way as
+/// before (keyboard-distance, then frequency). `UITextChecker` is the safety
+/// net: used whenever SymSpell isn't loaded, isn't English, or finds nothing.
 struct AutocorrectEngine {
 
     private let checker = UITextChecker()
+    private let symSpell: SymSpellEngine?
+
+    init(symSpell: SymSpellEngine? = nil) {
+        self.symSpell = symSpell
+    }
 
     /// Top correction for a misspelled word, or nil if it is spelled correctly
     /// or is a known personal/lexicon word.
     func correct(word: String, language: Language, lexicon: Set<String> = []) -> String? {
-        guard let guesses = guesses(for: word, language: language, lexicon: lexicon) else { return nil }
-        return reranked(guesses, typed: word).first
+        suggestions(word: word, language: language, limit: 1, lexicon: lexicon).first
     }
 
     /// Ranked correction candidates for a misspelled word; empty when the word
     /// is spelled correctly or is a known personal/lexicon word.
     func suggestions(word: String, language: Language, limit: Int = 2, lexicon: Set<String> = []) -> [String] {
-        guard let guesses = guesses(for: word, language: language, lexicon: lexicon) else { return [] }
+        guard !word.isEmpty, !lexicon.contains(word.lowercased()) else { return [] }
+
+        if language == .english, let symSpellResult = symSpellSuggestions(for: word) {
+            return Array(symSpellResult.prefix(limit))
+        }
+
+        guard let guesses = uiTextCheckerGuesses(for: word, language: language) else { return [] }
         return Array(reranked(guesses, typed: word).prefix(limit))
     }
 
+    /// SymSpell candidates for `word`, re-ranked, or nil to fall back to
+    /// `UITextChecker` (no engine loaded, word is a known word, or no
+    /// delete-index candidates were found within the edit-distance budget).
+    private func symSpellSuggestions(for word: String) -> [String]? {
+        guard let symSpell, symSpell.wordCount > 0, !symSpell.contains(word) else { return nil }
+        let candidates = symSpell.lookup(word, limit: 8)
+        guard !candidates.isEmpty else { return nil }
+        return rerankedCandidates(candidates, typed: word)
+    }
+
     /// `UITextChecker` guesses for a word, or nil when the word is not flagged
-    /// as misspelled (correctly spelled, or a known lexicon word).
-    private func guesses(for word: String, language: Language, lexicon: Set<String>) -> [String]? {
-        guard !word.isEmpty, !lexicon.contains(word.lowercased()) else { return nil }
+    /// as misspelled (correctly spelled, or a known lexicon word). Lexicon/
+    /// empty-word checks already happened in `suggestions`.
+    private func uiTextCheckerGuesses(for word: String, language: Language) -> [String]? {
         let range = NSRange(location: 0, length: word.utf16.count)
         let misspelled = checker.rangeOfMisspelledWord(
             in: word, range: range, startingAt: 0, wrap: false, language: language.isoCode
@@ -66,6 +92,19 @@ struct AutocorrectEngine {
                 return da != db ? da < db : a.offset < b.offset
             }
             .map { $0.element }
+    }
+
+    /// Re-order SymSpell candidates the same way as `reranked`, but breaking
+    /// ties by corpus frequency (`Candidate.count`) instead of original order —
+    /// SymSpell candidates arrive unordered by keyboard distance.
+    func rerankedCandidates(_ candidates: [SymSpellEngine.Candidate], typed: String) -> [String] {
+        candidates
+            .sorted { a, b in
+                let da = weightedDistance(typed, a.word)
+                let db = weightedDistance(typed, b.word)
+                return da != db ? da < db : a.count > b.count
+            }
+            .map { $0.word }
     }
 
     private static let qwertyRows = ["qwertyuiop", "asdfghjkl", "zxcvbnm"]

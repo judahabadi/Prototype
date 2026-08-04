@@ -17,16 +17,18 @@ final class SuggestionService: AutocompleteService {
 
     var locale: Locale
     private let nextWord: NextWordEngine
-    private let autocorrect = AutocorrectEngine()
+    private let autocorrect: AutocorrectEngine
     private let language: () -> Language
 
     init(
         locale: Locale,
         nextWord: NextWordEngine,
+        symSpell: SymSpellEngine? = nil,
         language: @escaping () -> Language
     ) {
         self.locale = locale
         self.nextWord = nextWord
+        self.autocorrect = AutocorrectEngine(symSpell: symSpell)
         self.language = language
     }
 

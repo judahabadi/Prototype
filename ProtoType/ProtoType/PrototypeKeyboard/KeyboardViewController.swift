@@ -13,6 +13,8 @@ final class KeyboardViewController: KeyboardInputViewController, UIInputViewAudi
     var kbState: KeyboardState!
     private var nextWordEngine = NextWordEngine()
     private var didLoadNextWord = false
+    private var symSpellEngine: SymSpellEngine?
+    private var didLoadSymSpell = false
 
     override func viewDidLoad() {
         // Initialize state before super, since super may trigger view setup.
@@ -53,12 +55,18 @@ final class KeyboardViewController: KeyboardInputViewController, UIInputViewAudi
         state.feedbackContext.settings.isAudioFeedbackEnabled = defaults.bool(forKey: AppGroup.clicksKey)
     }
 
-    /// Load the bundled English next-word set (once). Translation no longer
-    /// depends on bundled data — it comes from Apple's on-device model.
+    /// Load the bundled English next-word set and SymSpell typo index (once
+    /// each). Both are English-only for now — it's the only language with a
+    /// bundled word-frequency list. Translation no longer depends on bundled
+    /// data — it comes from Apple's on-device model.
     private func loadEngines() {
         if !didLoadNextWord, let english = NextWordEngine.english() {
             nextWordEngine = english
             didLoadNextWord = true
+        }
+        if !didLoadSymSpell, let symSpell = SymSpellEngine.english() {
+            symSpellEngine = symSpell
+            didLoadSymSpell = true
         }
     }
 
@@ -68,6 +76,7 @@ final class KeyboardViewController: KeyboardInputViewController, UIInputViewAudi
         services.autocompleteService = SuggestionService(
             locale: Locale(identifier: kbState.nativeLanguage.isoCode),
             nextWord: nextWordEngine,
+            symSpell: symSpellEngine,
             language: { [weak self] in self?.kbState.nativeLanguage ?? .english }
         )
     }

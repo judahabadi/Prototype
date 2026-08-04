@@ -41,6 +41,19 @@ struct NextWordEngineTests {
         e.load(bigramLists: ["i": ["want", "am", "will"]], unigrams: [("the", 100)])
         #expect(e.nextWords(after: "i", limit: 2) == ["want", "am"])
     }
+
+    // completions() binary-searches a separate alphabetically-sorted array
+    // (PLAN.md issue 12) instead of scanning `unigrams` — these exercise its
+    // boundaries directly.
+    @Test func completionsPrefixNotInDictionaryReturnsEmpty() {
+        #expect(engine().completions(for: "zzz").isEmpty)
+    }
+
+    @Test func completionsAtAlphabeticalUpperBoundary() {
+        // "world" alphabetically follows every other loaded word, so this
+        // exercises the binary search's upper edge.
+        #expect(engine().completions(for: "wor", limit: 1) == ["world"])
+    }
 }
 
 struct AutocorrectEngineTests {
@@ -63,6 +76,53 @@ struct AutocorrectEngineTests {
         let e = AutocorrectEngine()
         // i->o adjacent should be cheaper than i->a (far).
         #expect(e.weightedDistance("wint", "wont") < e.weightedDistance("wint", "want"))
+    }
+
+    // PLAN.md issue 1: SymSpell candidates, re-ranked the same way as
+    // UITextChecker guesses (keyboard-distance first, frequency to break ties).
+    @Test func rerankedCandidatesPrefersAdjacentKeyOverFrequency() {
+        let e = AutocorrectEngine()
+        let candidates = [
+            SymSpellEngine.Candidate(word: "want", distance: 1, count: 1000),
+            SymSpellEngine.Candidate(word: "wont", distance: 1, count: 400),
+        ]
+        // "wint": i->o (wont) is keyboard-adjacent; i->a (want) is far apart.
+        // Keyboard distance wins even though "want" is far more frequent.
+        #expect(e.rerankedCandidates(candidates, typed: "wint").first == "wont")
+    }
+
+    @Test func rerankedCandidatesBreaksTiesByFrequency() {
+        let e = AutocorrectEngine()
+        let candidates = [
+            SymSpellEngine.Candidate(word: "cats", distance: 1, count: 5),
+            SymSpellEngine.Candidate(word: "scat", distance: 1, count: 200),
+        ]
+        // Both are a single insertion away from "cat" — equal weighted
+        // distance regardless of QWERTY layout — so frequency breaks the tie.
+        #expect(e.rerankedCandidates(candidates, typed: "cat").first == "scat")
+    }
+
+    @Test func symSpellSuggestionsUsedForEnglishWhenLoaded() {
+        let symSpell = SymSpellEngine(maxEditDistance: 2, prefixLength: 7)
+        symSpell.load(unigrams: [("want", 1000), ("wont", 400), ("what", 900)])
+        let engine = AutocorrectEngine(symSpell: symSpell)
+        // Resolved entirely via SymSpell — never touches UITextChecker, so
+        // this is deterministic regardless of the OS dictionary.
+        #expect(engine.suggestions(word: "wnat", language: .english).contains("want"))
+    }
+
+    @Test func symSpellSkippedForNonEnglishLanguages() {
+        let symSpell = SymSpellEngine(maxEditDistance: 2, prefixLength: 7)
+        symSpell.load(unigrams: [("want", 1000)])
+        let engine = AutocorrectEngine(symSpell: symSpell)
+        // Only English has bundled frequency data; other languages must not
+        // pull candidates out of the English SymSpell index.
+        #expect(engine.suggestions(word: "wnat", language: .spanish).contains("want") == false)
+    }
+
+    @Test func noSymSpellEngineFallsBackToDefaultBehavior() {
+        // Default init (no SymSpell) must behave exactly as before this change.
+        #expect(AutocorrectEngine().suggestions(word: "", language: .english).isEmpty)
     }
 }
 
