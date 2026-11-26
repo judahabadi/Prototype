@@ -18,6 +18,9 @@ final class SuggestionService: AutocompleteService {
     var locale: Locale
     private let nextWord: NextWordEngine
     private let autocorrect: AutocorrectEngine
+    private let contractions = ContractionEngine()
+    private let phraseCaps = PhraseCapEngine()
+    private let dontCorrect = DontCorrectList()
     private let language: () -> Language
 
     init(
@@ -65,10 +68,29 @@ final class SuggestionService: AutocompleteService {
         // Slot 0: the literal typed word ("keep my spelling").
         out.append(Autocomplete.Suggestion(text: word, type: .unknown))
 
-        // Autocorrect candidate (marked so KeyboardKit applies it on space).
-        let corrections = autocorrect.suggestions(word: word, language: language(), limit: 2)
-        if let top = corrections.first {
-            out.append(Autocomplete.Suggestion(text: top, type: .autocorrect))
+        // One fix per word, priority-ordered. `.autocorrect` = KeyboardKit
+        // applies it on space; `.regular` = suggest-only (user must tap).
+        var corrections: [String] = []
+        if let contraction = contractions.contraction(for: word, language: language()) {
+            // wont -> won't. Context-sensitive forms (its/well/were) are valid
+            // words too, so they're suggest-only until the n-gram disambiguates.
+            let type: Autocomplete.SuggestionType =
+                contractions.isContextSensitive(word) ? .regular : .autocorrect
+            out.append(Autocomplete.Suggestion(text: contraction, type: type))
+            corrections.append(contraction)
+        } else if let cased = phraseCaps.fix(word: word) {
+            // i -> I, paris -> Paris, iphone -> iPhone.
+            out.append(Autocomplete.Suggestion(text: cased, type: .autocorrect))
+            corrections.append(cased)
+        } else if !dontCorrect.shouldSkip(word) {
+            // Spell correction, unless the user has told us to leave this word
+            // alone (don't-correct list, App Group).
+            corrections = autocorrect.suggestions(
+                word: word, language: language(), limit: 2, lexicon: dontCorrect.words
+            )
+            if let top = corrections.first {
+                out.append(Autocomplete.Suggestion(text: top, type: .autocorrect))
+            }
         }
 
         // Fill the remaining slot(s) with completions.
