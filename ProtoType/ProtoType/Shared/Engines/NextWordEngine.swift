@@ -11,7 +11,17 @@ import Foundation
 /// are kept, to bound memory in the keyboard extension.
 final class NextWordEngine {
 
-    private var unigrams: [(word: String, count: Int)] = []   // sorted desc by count
+    private var unigrams: [(word: String, count: Int)] = []      // sorted desc by count
+    /// Same entries as `unigrams`, sorted alphabetically, so `completions`
+    /// can binary-search the prefix range instead of scanning the whole list.
+    ///
+    /// PLAN.md issue 12 named `marisa-trie` (a C++ library) for this; that
+    /// needs a C++/SwiftPM bridge this environment has no Xcode to build or
+    /// verify, so this substitutes a plain sorted-array + binary search —
+    /// same O(log n) prefix lookup, no per-node object graph, no new
+    /// dependency. Revisit marisa-trie if memory profiling shows this isn't
+    /// enough once more languages are added.
+    private var alphabetical: [(word: String, count: Int)] = []
     private var bigrams: [String: [(word: String, count: Int)]] = [:]  // head -> top-K nexts
     private let topKPerHead: Int
 
@@ -24,9 +34,7 @@ final class NextWordEngine {
     /// Load from in-memory frequency data. Words are lowercased; unigrams are
     /// sorted by frequency and bigrams are trimmed to the top-K nexts per head.
     func load(unigrams: [(String, Int)], bigrams: [(String, String, Int)]) {
-        self.unigrams = unigrams
-            .map { (word: $0.0.lowercased(), count: $0.1) }
-            .sorted { $0.count > $1.count }
+        setUnigrams(unigrams)
 
         var grouped: [String: [(word: String, count: Int)]] = [:]
         for (head, next, count) in bigrams {
@@ -43,9 +51,7 @@ final class NextWordEngine {
     /// position becomes a descending pseudo-count. Unigrams come from a separate
     /// frequency list (`unigrams_en.txt`).
     func load(bigramLists: [String: [String]], unigrams: [(String, Int)]) {
-        self.unigrams = unigrams
-            .map { (word: $0.0.lowercased(), count: $0.1) }
-            .sorted { $0.count > $1.count }
+        setUnigrams(unigrams)
         self.bigrams = [:]
         for (head, nexts) in bigramLists {
             let scored = nexts.enumerated().map {
@@ -99,6 +105,14 @@ final class NextWordEngine {
         load(unigrams: uni, bigrams: bi)
     }
 
+    /// Lowercases + stores `unigrams` (by count desc, for next-word fallback)
+    /// and `alphabetical` (by word asc, for `completions`' binary search).
+    private func setUnigrams(_ unigrams: [(String, Int)]) {
+        let lowercased = unigrams.map { (word: $0.0.lowercased(), count: $0.1) }
+        self.unigrams = lowercased.sorted { $0.count > $1.count }
+        self.alphabetical = lowercased.sorted { $0.word < $1.word }
+    }
+
     // MARK: - Query
 
     /// Next-word suggestions after `lastWord` (the word just committed). Falls
@@ -116,11 +130,26 @@ final class NextWordEngine {
     func completions(for partial: String, limit: Int = 3) -> [String] {
         let p = partial.lowercased()
         guard !p.isEmpty else { return [] }
-        return Array(
-            unigrams.lazy
-                .filter { $0.word.hasPrefix(p) && $0.word != p }
-                .prefix(limit)
-                .map { $0.word }
-        )
+
+        var matches: [(word: String, count: Int)] = []
+        var i = lowerBound(of: p)
+        while i < alphabetical.count, alphabetical[i].word.hasPrefix(p) {
+            if alphabetical[i].word != p { matches.append(alphabetical[i]) }
+            i += 1
+        }
+        return matches
+            .sorted { $0.count > $1.count }
+            .prefix(limit)
+            .map { $0.word }
+    }
+
+    /// First index in `alphabetical` whose word is >= `prefix` (binary search).
+    private func lowerBound(of prefix: String) -> Int {
+        var lo = 0, hi = alphabetical.count
+        while lo < hi {
+            let mid = (lo + hi) / 2
+            if alphabetical[mid].word < prefix { lo = mid + 1 } else { hi = mid }
+        }
+        return lo
     }
 }
