@@ -55,7 +55,9 @@ final class AccountFlowUITests: XCTestCase {
     func testPaywallShowsTermsAndPrivacy() {
         let app = launch(["-hasCompletedOnboarding", "YES"])
 
-        let upgrade = app.buttons.containing(NSPredicate(format: "label CONTAINS 'Upgrade to Premium'")).firstMatch
+        // The upgrade row sits below the Account section, so scroll to it first.
+        let upgrade = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Upgrade to Premium'")).firstMatch
+        scrollTo(upgrade, in: app)
         XCTAssertTrue(upgrade.waitForExistence(timeout: 5))
         upgrade.tap()
 
