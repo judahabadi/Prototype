@@ -41,7 +41,7 @@ struct PrivacyPolicyView: View {
                     }
 
                     PolicySection(title: "Subscriptions and payments") {
-                        Text("ProtoType offers an optional subscription processed entirely by **Apple's App Store** (StoreKit). We never see, store, or process your payment information. Apple's privacy policy governs those transactions.")
+                        Text("ProtoType offers an optional monthly subscription processed entirely by **Apple's App Store** (StoreKit). We never see, store, or process your payment information. Apple's privacy policy governs those transactions.")
                             .padding(.bottom, 8)
                         Text("ProtoType stores only a Boolean flag (subscribed / not subscribed) locally on your device to determine which features are available.")
                     }
@@ -52,6 +52,19 @@ struct PrivacyPolicyView: View {
 
                     PolicySection(title: "Data shared between the app and keyboard extension") {
                         Text("ProtoType uses an App Group (a standard iOS mechanism) to share your selected language pair and subscription status between the main app and the keyboard extension. This data lives entirely on your device and is never transmitted externally.")
+                    }
+
+                    PolicySection(title: "Services we rely on") {
+                        Text("ProtoType uses only Apple services: Sign in with Apple, iCloud, Apple Translation, and the App Store. Each is covered by Apple's Privacy Policy. ProtoType uses no other third-party services.")
+                    }
+
+                    PolicySection(title: "Data retention and your choices") {
+                        BulletList(items: [
+                            "Delete Account (Home → Account) signs you out and removes your synced language pair from iCloud right away.",
+                            "Deleting the app removes all ProtoType data stored on your device.",
+                            "To stop using Sign in with Apple for ProtoType, go to Settings → Apple Account → Sign in with Apple.",
+                            "Because we hold no personal data on our side, there is nothing for us to export or delete on request.",
+                        ])
                     }
 
                     PolicySection(title: "Children's privacy") {
