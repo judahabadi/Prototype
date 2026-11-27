@@ -29,6 +29,12 @@ final class KeyboardSimTests: XCTestCase {
         snapshot("1_keyboard_shown")
 
         try switchToPrototypeKeyboard()
+        // iOS shows a stand-in Apple layout ("UIKeyboardLayoutStar Preview")
+        // until the extension process has launched and drawn its own view.
+        let placeholder = app.otherElements["UIKeyboardLayoutStar Preview"]
+        var waited = 0
+        while placeholder.exists && waited < 30 { sleep(2); waited += 2 }
+        attachText("placeholder gone after \(waited)s: \(!placeholder.exists)", named: "extension_load.txt")
         snapshot("2_prototype_keyboard")
         attachText(app.debugDescription, named: "hierarchy_prototype_keyboard.txt")
 
@@ -139,7 +145,7 @@ final class KeyboardSimTests: XCTestCase {
     }
 
     private func tapKey(_ key: String) throws {
-        let candidates = [app.buttons[key], app.keys[key], app.buttons[key.uppercased()]]
+        let candidates = [app.buttons[key], app.keys[key], app.buttons[key.uppercased()], app.keys[key.uppercased()]]
         if let el = candidates.first(where: { $0.exists && $0.isHittable }) {
             el.tap()
             return
