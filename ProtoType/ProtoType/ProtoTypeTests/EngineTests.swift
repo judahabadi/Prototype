@@ -76,6 +76,8 @@ struct AutocorrectEngineTests {
         let e = AutocorrectEngine()
         // i->o adjacent should be cheaper than i->a (far).
         #expect(e.weightedDistance("wint", "wont") < e.weightedDistance("wint", "want"))
+        // Swapped letters beat an adjacent-key substitution: teh -> the, not ten.
+        #expect(e.weightedDistance("teh", "the") < e.weightedDistance("teh", "ten"))
     }
 
     // PLAN.md issue 1: SymSpell candidates, re-ranked the same way as

@@ -145,27 +145,35 @@ final class SymSpellEngine {
         return variants
     }
 
-    /// Plain Levenshtein with early-exit band; returns max+1 when exceeded.
-    /// (Unweighted on purpose — QWERTY-weighted ranking happens afterwards in
-    /// `AutocorrectEngine.reranked`.)
+    /// Optimal-string-alignment distance (Levenshtein + adjacent swaps count
+    /// as 1, so "teh" -> "the" is 1 edit) with an early-exit band; returns
+    /// max+1 when exceeded. (Unweighted on purpose — QWERTY-weighted ranking
+    /// happens afterwards in `AutocorrectEngine`.)
     func editDistance(_ a: String, _ b: String, max maxD: Int) -> Int {
         let s = Array(a), t = Array(b)
         if abs(s.count - t.count) > maxD { return maxD + 1 }
         if s.isEmpty { return t.count }
         if t.isEmpty { return s.count }
+        var prev2 = [Int](repeating: 0, count: t.count + 1)
         var prev = Array(0...t.count)
         var cur = [Int](repeating: 0, count: t.count + 1)
+        var prevRowMin = 0
         for i in 1...s.count {
             cur[0] = i
             var rowMin = cur[0]
             for j in 1...t.count {
                 let cost = s[i - 1] == t[j - 1] ? 0 : 1
                 cur[j] = Swift.min(prev[j - 1] + cost, prev[j] + 1, cur[j - 1] + 1)
+                if i > 1, j > 1, s[i - 1] == t[j - 2], s[i - 2] == t[j - 1] {
+                    cur[j] = Swift.min(cur[j], prev2[j - 2] + 1)
+                }
                 rowMin = Swift.min(rowMin, cur[j])
             }
-            if rowMin > maxD { return maxD + 1 }   // whole row over budget — bail
-            swap(&prev, &cur)
+            // A swap can reach back two rows, so bail only when both are over.
+            if rowMin > maxD && prevRowMin > maxD { return maxD + 1 }
+            prevRowMin = rowMin
+            (prev2, prev, cur) = (prev, cur, prev2)
         }
-        return prev[t.count]
+        return Swift.min(prev[t.count], maxD + 1)
     }
 }

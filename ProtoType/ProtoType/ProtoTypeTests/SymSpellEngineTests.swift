@@ -46,6 +46,13 @@ struct SymSpellEngineTests {
         #expect(e.editDistance("abcdef", "zzzzzz", max: 2) == 3) // capped at max+1
     }
 
+    @Test func swappedLettersAreOneEdit() {
+        #expect(engine().editDistance("teh", "the", max: 1) == 1)
+        let e = SymSpellEngine(maxEditDistance: 1, prefixLength: 7)
+        e.load(unigrams: [("the", 1000), ("ten", 50)])
+        #expect(e.lookup("teh").map(\.word).contains("the"))
+    }
+
     @Test func caseInsensitive() {
         #expect(engine().lookup("Wnat").map(\.word).contains("want"))
     }
