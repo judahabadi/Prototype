@@ -30,6 +30,7 @@ final class KeyboardSimTests: XCTestCase {
 
         try switchToPrototypeKeyboard()
         snapshot("2_prototype_keyboard")
+        attachText(app.debugDescription, named: "hierarchy_prototype_keyboard.txt")
 
         // Each case: what we tap (space commits the word), and what we hope ends up.
         let cases: [(typed: String, expected: String)] = [
@@ -59,29 +60,82 @@ final class KeyboardSimTests: XCTestCase {
 
     // MARK: - Helpers
 
-    /// Tap the globe ("Next keyboard") until one of our keys shows up.
+    /// Tap the globe ("Next keyboard") until it reports our keyboard. If it
+    /// never does, add the keyboard through Settings and try again.
     private func switchToPrototypeKeyboard() throws {
-        for attempt in 0..<4 {
-            if isPrototypeKeyboard() { return }
-            let globe = app.buttons["Next keyboard"]
-            guard globe.exists else {
-                attachText(app.debugDescription, named: "hierarchy_no_globe_\(attempt).txt")
-                break
-            }
+        if try cycleGlobe() { return }
+        addKeyboardInSettings()
+        app.activate()
+        let editor = app.textViews.firstMatch
+        if editor.waitForExistence(timeout: 10) { editor.tap() }
+        sleep(2)
+        if try cycleGlobe() { return }
+        attachText(app.debugDescription, named: "hierarchy_switch_failed.txt")
+        snapshot("switch_failed")
+        throw XCTSkip("Could not switch to the Prototype keyboard; see hierarchy attachment")
+    }
+
+    private var globe: XCUIElement { app.buttons["Next keyboard"] }
+
+    /// The globe's value names the active keyboard ("English (US)", ...).
+    private func isPrototypeKeyboard() -> Bool {
+        guard globe.exists else { return false }
+        let value = (globe.value as? String) ?? ""
+        return value.localizedCaseInsensitiveContains("proto")
+    }
+
+    private func cycleGlobe() throws -> Bool {
+        for _ in 0..<4 {
+            if isPrototypeKeyboard() { return true }
+            guard globe.exists else { return false }
             globe.tap()
             sleep(2)
         }
-        if !isPrototypeKeyboard() {
-            attachText(app.debugDescription, named: "hierarchy_switch_failed.txt")
-            snapshot("switch_failed")
-            throw XCTSkip("Could not switch to the Prototype keyboard; see hierarchy attachment")
-        }
+        return isPrototypeKeyboard()
     }
 
-    /// The system keyboard exposes `app.keyboards`; a third-party keyboard's
-    /// keys appear as plain buttons outside it.
-    private func isPrototypeKeyboard() -> Bool {
-        app.keyboards.count == 0 && app.buttons["t"].exists
+    /// Settings > General > Keyboard > Keyboards > Add New Keyboard… > ours.
+    private func addKeyboardInSettings() {
+        let settings = XCUIApplication(bundleIdentifier: "com.apple.Preferences")
+        settings.launch()
+        for label in ["General", "Keyboard", "Keyboards"] {
+            guard tapLabel(label, in: settings) else {
+                attachText(settings.debugDescription, named: "settings_missing_\(label).txt")
+                return
+            }
+        }
+        let add = NSPredicate(format: "label BEGINSWITH 'Add New Keyboard'")
+        guard tapMatching(add, in: settings) else {
+            attachText(settings.debugDescription, named: "settings_missing_add.txt")
+            return
+        }
+        sleep(1)
+        let ours = NSPredicate(format: "label CONTAINS[c] 'proto'")
+        if !tapMatching(ours, in: settings) {
+            attachText(settings.debugDescription, named: "settings_missing_prototype.txt")
+        }
+        sleep(1)
+        snapshot("settings_after_add")
+    }
+
+    private func tapLabel(_ label: String, in target: XCUIApplication) -> Bool {
+        tapMatching(NSPredicate(format: "label == %@", label), in: target)
+    }
+
+    /// Finds a cell/button/text matching `predicate`, scrolling if needed.
+    private func tapMatching(_ predicate: NSPredicate, in target: XCUIApplication) -> Bool {
+        for _ in 0..<6 {
+            for query in [target.cells, target.buttons, target.staticTexts] {
+                let el = query.matching(predicate).firstMatch
+                if el.waitForExistence(timeout: 2), el.isHittable {
+                    el.tap()
+                    sleep(1)
+                    return true
+                }
+            }
+            target.swipeUp()
+        }
+        return false
     }
 
     private func tapKey(_ key: String) throws {
