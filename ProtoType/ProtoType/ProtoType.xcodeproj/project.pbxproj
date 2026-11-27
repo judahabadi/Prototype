@@ -673,7 +673,7 @@
 				DEVELOPMENT_TEAM = 7KQ7FD9TAX;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PrototypeKeyboard/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = PrototypeKeyboard;
+				INFOPLIST_KEY_CFBundleDisplayName = ProtoType;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -702,7 +702,7 @@
 				DEVELOPMENT_TEAM = 7KQ7FD9TAX;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PrototypeKeyboard/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = PrototypeKeyboard;
+				INFOPLIST_KEY_CFBundleDisplayName = ProtoType;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

@@ -112,9 +112,12 @@ struct PaywallView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 24)
 
-                Button("Privacy Policy") { showPrivacyPolicy = true }
-                    .font(.system(size: 11.5))
-                    .foregroundStyle(.tertiary)
+                HStack(spacing: 16) {
+                    Link("Terms of Use", destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!)
+                    Button("Privacy Policy") { showPrivacyPolicy = true }
+                }
+                .font(.system(size: 11.5))
+                .foregroundStyle(.tertiary)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 24)

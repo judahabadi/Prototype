@@ -13,6 +13,7 @@ struct AccountFlowView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var showPassword = false
+    @State private var showPrivacyPolicy = false
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -211,12 +212,20 @@ struct AccountFlowView: View {
     }
 
     private var legalText: some View {
-        Text("By continuing you agree to ProtoType's **Terms** and **Privacy Policy**.")
+        Text("By continuing you agree to ProtoType's [Terms](https://www.apple.com/legal/internet-services/itunes/dev/stdeula/) and [Privacy Policy](prototype-privacy:).")
             .font(.system(size: 11.5))
             .foregroundStyle(.tertiary)
             .multilineTextAlignment(.center)
             .padding(.horizontal, 24)
             .padding(.top, 4)
+            .environment(\.openURL, OpenURLAction { url in
+                guard url.scheme == "prototype-privacy" else { return .systemAction }
+                showPrivacyPolicy = true
+                return .handled
+            })
+            .sheet(isPresented: $showPrivacyPolicy) {
+                PrivacyPolicyView()
+            }
     }
 
     private func backButton(action: @escaping () -> Void) -> some View {

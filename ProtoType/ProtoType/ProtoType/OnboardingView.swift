@@ -305,7 +305,7 @@ private struct SetupScreen: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Why Full Access?")
                         .font(.system(size: 15, weight: .semibold))
-                    Text("It only lets the keyboard sync your language settings with the app. Translations run on-device with Apple Translation — nothing you type is ever sent to ProtoType's servers.")
+                    Text("It lets the keyboard read the languages and settings you pick in this app, and run Apple's on-device translation. Nothing you type ever leaves your iPhone.")
                         .font(.system(size: 13))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

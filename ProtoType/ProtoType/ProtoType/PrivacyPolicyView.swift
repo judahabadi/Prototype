@@ -7,7 +7,7 @@ struct PrivacyPolicyView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("Last updated June 2, 2026")
+                    Text("Last updated November 27, 2026")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(.bottom, 20)
@@ -33,9 +33,7 @@ struct PrivacyPolicyView: View {
                     }
 
                     PolicySection(title: "Translation") {
-                        Text("ProtoType uses **Apple Translation** (on-device) as its primary translation engine. Words you type are processed entirely on your device by Apple's framework and never leave it.")
-                            .padding(.bottom, 8)
-                        Text("As a fallback for any language pair not yet supported by Apple Translation, ProtoType may send the word to the **MyMemory translation API**. In that case, the individual word — but never surrounding context or identifying information — is transmitted over HTTPS. MyMemory's privacy policy is available at their website.")
+                        Text("ProtoType uses **Apple Translation** (on-device) as its translation engine. Words you type are processed entirely on your device by Apple's framework and never leave it.")
                     }
 
                     PolicySection(title: "Subscriptions and payments") {
@@ -45,7 +43,7 @@ struct PrivacyPolicyView: View {
                     }
 
                     PolicySection(title: "Keyboard extension permissions") {
-                        Text("ProtoType requests **Full Access** for the keyboard extension. This is required to use the Apple Translation framework for on-device translation. Full Access does *not* mean we read or transmit what you type — we do not.")
+                        Text("ProtoType requests **Full Access** for the keyboard extension. It lets the keyboard read the languages and settings you choose in the ProtoType app (shared on your device through an App Group) and run Apple's on-device Translation. Full Access does *not* mean we read or transmit what you type — we do not.")
                     }
 
                     PolicySection(title: "Data shared between the app and keyboard extension") {
