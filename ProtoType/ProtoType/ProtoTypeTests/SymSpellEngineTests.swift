@@ -93,26 +93,29 @@ struct SymSpellBenchmarkTests {
         return Double(info.phys_footprint) / 1_048_576.0
     }
 
-    /// Runs first in this serialized suite so freed-but-retained pages from
-    /// the other benchmarks can't hide its cost.
     /// CI gate: the config `SymSpellEngine.english()` ships must stay well
     /// under the keyboard extension's ~40MB limit (other engines need room too).
     @Test func shippedConfigFitsBudget() throws {
         let text = try loadUnigramsText()
-        // Warm-up: the first engine built in the process also pays one-time
-        // runtime/allocator setup (~20MB in CI), which would swamp the number.
-        let warmUp = SymSpellEngine(maxEditDistance: 1, prefixLength: 7)
-        warmUp.load(unigramsText: text, limit: 2_000)
-        let before = footprintMB()
+        // Live heap bytes (malloc size_in_use), not phys_footprint: footprint
+        // in the simulator swung 1-27MB for the same config depending on what
+        // ran before; heap-in-use counts exactly what the index keeps alive.
+        let before = heapInUseMB()
         let engine = SymSpellEngine(maxEditDistance: 1, prefixLength: 7)
         engine.load(unigramsText: text)
-        let added = footprintMB() - before
-        let report = "[SymSpell gate] shipped config added \(String(format: "%.1f", added))MB (budget 15MB)"
+        let added = heapInUseMB() - before
+        let report = "[SymSpell gate] shipped config holds \(String(format: "%.1f", added))MB of heap (budget 15MB)"
         print(report)
         // Attached so CI's xcresult export surfaces the number (xcpretty hides prints).
         Attachment.record(report, named: "symspell_gate.txt")
         #expect(added < 15, "SymSpell index uses \(added)MB; budget is 15MB")
-        #expect(!engine.lookup("teh").isEmpty)
+        withExtendedLifetime(engine) { #expect(!engine.lookup("teh").isEmpty) }
+    }
+
+    private func heapInUseMB() -> Double {
+        var stats = malloc_statistics_t()
+        malloc_zone_statistics(nil, &stats)
+        return Double(stats.size_in_use) / 1_048_576.0
     }
 
     @Test func memoryFootprint50kEnglish() throws {
