@@ -1,0 +1,95 @@
+name: Keyboard simulator test
+
+# Boots an iPhone simulator, enables the Prototype keyboard, and runs
+# KeyboardSimTests (types typos with the real keyboard, saves screenshots).
+# Manual-only for now: in the CI simulator iOS registers the keyboard but never
+# launches it, so the test can't type yet. Run it from the Actions tab.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  keyboard-sim:
+    name: Keyboard in simulator
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Pick a simulator
+        id: sim
+        run: |
+          INFO=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys,re
+          d=json.load(sys.stdin)['devices']
+          best=None
+          for rt,devs in d.items():
+              m=re.search(r'iOS-(\d+)-(\d+)', rt)
+              if not m: continue
+              ver=(int(m.group(1)),int(m.group(2)))
+              for dev in devs:
+                  if 'iPhone' in dev.get('name','') and dev.get('isAvailable',True):
+                      if best is None or ver>best[0]: best=(ver,dev['udid'])
+          print(f'{best[1]} {best[0][0]}.{best[0][1]}' if best else ' ')
+          ")
+          DEVICE_ID=$(echo "$INFO" | cut -d' ' -f1)
+          echo "Using simulator $INFO"
+          echo "device_id=$DEVICE_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Boot simulator with software keyboard and Prototype keyboard enabled
+        run: |
+          UDID=${{ steps.sim.outputs.device_id }}
+          # Show the on-screen keyboard instead of the Mac's hardware keyboard.
+          defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool false
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+          xcrun simctl spawn "$UDID" defaults write -g AppleKeyboards -array \
+            "en_US@sw=QWERTY;hw=Automatic" \
+            "com.prototype.app.ProtoType.PrototypeKeyboard"
+          xcrun simctl spawn "$UDID" defaults write -g AppleKeyboardsExpanded -int 1
+          xcrun simctl spawn "$UDID" defaults read -g AppleKeyboards || true
+
+      - name: Run keyboard UI test
+        run: |
+          xcodebuild test \
+            -project ProtoType/ProtoType/ProtoType.xcodeproj \
+            -scheme KeyboardSim \
+            -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}" \
+            -only-testing:ProtoTypeUITests/KeyboardSimTests \
+            -resultBundlePath KeyboardSim.xcresult \
+            | xcpretty && exit ${PIPESTATUS[0]}
+
+      - name: Collect keyboard extension logs and crash reports
+        if: always()
+        run: |
+          mkdir -p keyboard-sim
+          xcrun simctl spawn ${{ steps.sim.outputs.device_id }} log show --last 15m --style compact \
+            --predicate 'process CONTAINS "PrototypeKeyboard" OR eventMessage CONTAINS "PrototypeKeyboard" OR eventMessage CONTAINS[c] "com.prototype.app"' \
+            > keyboard-sim/extension_log.txt 2>&1 || true
+          # Unfiltered log: launch errors for the extension often don't name it.
+          xcrun simctl spawn ${{ steps.sim.outputs.device_id }} log show --last 15m --style compact \
+            > keyboard-sim/full_log.txt 2>&1 || true
+          grep -iE "extensionkit|pkd|keyboard.*(fail|error|denied)" keyboard-sim/full_log.txt | tail -n 100 || true
+          tail -n 200 keyboard-sim/extension_log.txt || true
+          cp ~/Library/Logs/DiagnosticReports/*PrototypeKeyboard* keyboard-sim/ 2>/dev/null || echo "no crash reports"
+
+      - name: Export screenshots and results
+        if: always()
+        run: |
+          xcrun xcresulttool export attachments \
+            --path KeyboardSim.xcresult \
+            --output-path keyboard-sim 2>/dev/null \
+          || echo "attachment export failed"
+          ls -R keyboard-sim || true
+
+      - name: Upload screenshots and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keyboard-sim
+          path: keyboard-sim

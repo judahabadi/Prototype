@@ -17,7 +17,7 @@ final class SuggestionService: AutocompleteService {
 
     var locale: Locale
     private let nextWord: NextWordEngine
-    private let autocorrect = AutocorrectEngine()
+    private let autocorrect: AutocorrectEngine
     private let contractions = ContractionEngine()
     private let phraseCaps = PhraseCapEngine()
     private let dontCorrect = DontCorrectList()
@@ -26,10 +26,12 @@ final class SuggestionService: AutocompleteService {
     init(
         locale: Locale,
         nextWord: NextWordEngine,
+        symSpell: SymSpellEngine? = nil,
         language: @escaping () -> Language
     ) {
         self.locale = locale
         self.nextWord = nextWord
+        self.autocorrect = AutocorrectEngine(symSpell: symSpell)
         self.language = language
     }
 

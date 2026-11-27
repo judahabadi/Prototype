@@ -5,9 +5,17 @@ When all 14 are locked → execute in priority order.
 
 ---
 
-## 🔒 1. Typos (autocorrect)
+## 🔒 1. Typos (autocorrect) — ✅ built (English only)
 
 **Decision: SymSpell primary + own weighted-Levenshtein ranker. UITextChecker as safety net.**
+
+Wired into `AutocorrectEngine`/`SuggestionService`/`KeyboardViewController` — English
+only, since `unigrams_en.txt` is the only bundled word-frequency list (es/fr/de/pt/ru/
+hi/zh/ja/ar have `ngrams_*.json` next-word lists but no frequency dictionary, so the
+per-language split below isn't buildable yet for them). **The on-device memory
+benchmark gate below has NOT been run** — this was written without Xcode access; run
+`SymSpellBenchmarkTests` on a real device before shipping and adjust
+`maxEditDistance`/`prefixLength` in `SymSpellEngine.english()` if over budget.
 
 Pipeline:
 ```
@@ -186,9 +194,16 @@ UniDic-BSD for Japanese, + existing frequency ranker.**
 - Japanese: romaji→kana mapping + kana→kanji candidates (IPADIC data)
 - Phase: built AFTER Latin + Indic/Arabic languages ship (execution order #5)
 
-## 🔒 12. Word completion (prefix)
+## 🔒 12. Word completion (prefix) — ✅ built, with a substitution
 
 **Decision: keep existing trie logic, move storage to marisa-trie.**
+
+**Deviation:** shipped as a plain sorted-array + binary search in `NextWordEngine`
+instead of marisa-trie. marisa-trie is a C++ library needing a SwiftPM/C++ bridge
+that couldn't be built or verified without Xcode access. The binary-search array
+gets the same O(log n) prefix lookup with no per-node object graph and no new
+dependency; revisit marisa-trie only if on-device memory profiling (once more
+languages are added) shows it isn't enough.
 
 - Keep: prefix-lookup logic, frequency ranking (existing in-house)
 - Change: storage → marisa-trie (s-yata/marisa-trie, BSD-2 leg), 50–100×
