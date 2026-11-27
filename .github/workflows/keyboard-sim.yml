@@ -68,10 +68,19 @@ jobs:
             PROVISIONING_PROFILE_SPECIFIER="" \
             | xcpretty && exit ${PIPESTATUS[0]}
 
-      - name: Export screenshots and results
+      - name: Collect keyboard extension logs and crash reports
         if: always()
         run: |
           mkdir -p keyboard-sim
+          xcrun simctl spawn ${{ steps.sim.outputs.device_id }} log show --last 15m --style compact \
+            --predicate 'process CONTAINS "PrototypeKeyboard" OR eventMessage CONTAINS "PrototypeKeyboard" OR eventMessage CONTAINS[c] "com.prototype.app"' \
+            > keyboard-sim/extension_log.txt 2>&1 || true
+          tail -n 200 keyboard-sim/extension_log.txt || true
+          cp ~/Library/Logs/DiagnosticReports/*PrototypeKeyboard* keyboard-sim/ 2>/dev/null || echo "no crash reports"
+
+      - name: Export screenshots and results
+        if: always()
+        run: |
           xcrun xcresulttool export attachments \
             --path KeyboardSim.xcresult \
             --output-path keyboard-sim 2>/dev/null \

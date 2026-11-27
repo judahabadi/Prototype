@@ -36,6 +36,11 @@ final class KeyboardSimTests: XCTestCase {
         while placeholder.exists && waited < 30 { sleep(2); waited += 2 }
         attachText("placeholder gone after \(waited)s: \(!placeholder.exists)", named: "extension_load.txt")
         snapshot("2_prototype_keyboard")
+        // Typing into the placeholder would test Apple's autocorrect, not ours.
+        guard !placeholder.exists else {
+            XCTFail("Prototype keyboard extension never finished loading (iOS placeholder still shown)")
+            return
+        }
         attachText(app.debugDescription, named: "hierarchy_prototype_keyboard.txt")
 
         // Each case: what we tap (space commits the word), and what we hope ends up.
