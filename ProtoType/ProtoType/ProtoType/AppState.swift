@@ -12,12 +12,18 @@ final class AppState {
 
     var nativeLanguage: Language {
         get { Language(rawValue: AppGroup.defaults.string(forKey: AppGroup.nativeKey) ?? "") ?? .english }
-        set { AppGroup.defaults.set(newValue.rawValue, forKey: AppGroup.nativeKey) }
+        set {
+            AppGroup.defaults.set(newValue.rawValue, forKey: AppGroup.nativeKey)
+            AccountManager.shared.pushSettings()
+        }
     }
 
     var targetLanguage: Language {
         get { Language(rawValue: AppGroup.defaults.string(forKey: AppGroup.targetKey) ?? "") ?? .spanish }
-        set { AppGroup.defaults.set(newValue.rawValue, forKey: AppGroup.targetKey) }
+        set {
+            AppGroup.defaults.set(newValue.rawValue, forKey: AppGroup.targetKey)
+            AccountManager.shared.pushSettings()
+        }
     }
 
     var hapticFeedback: Bool {

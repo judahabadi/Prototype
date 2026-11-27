@@ -25,11 +25,15 @@ struct PrivacyPolicyView: View {
                     PolicySection(title: "Data we do not collect") {
                         BulletList(items: [
                             "We do not collect or store what you type.",
-                            "We do not create user accounts.",
+                            "We do not run servers or store accounts on our side.",
                             "We do not use advertising networks or tracking pixels.",
                             "We do not sell or share data with third parties.",
                             "We have no analytics or crash-reporting SDKs in the app.",
                         ])
+                    }
+
+                    PolicySection(title: "Sign in with Apple and iCloud sync") {
+                        Text("Signing in is optional. If you use Sign in with Apple, ProtoType keeps only Apple's anonymous user identifier on your device. We do not request your name or email. Your chosen language pair is synced through your own iCloud account, which we cannot access. Delete Account in the app signs you out and removes the synced languages from iCloud. You can also stop using Sign in with Apple in Settings → Apple Account → Sign in with Apple.")
                     }
 
                     PolicySection(title: "Translation") {
