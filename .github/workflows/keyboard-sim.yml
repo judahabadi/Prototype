@@ -62,10 +62,6 @@ jobs:
             -destination "platform=iOS Simulator,id=${{ steps.sim.outputs.device_id }}" \
             -only-testing:ProtoTypeUITests/KeyboardSimTests \
             -resultBundlePath KeyboardSim.xcresult \
-            CODE_SIGN_IDENTITY="-" \
-            CODE_SIGN_STYLE=Manual \
-            DEVELOPMENT_TEAM="" \
-            PROVISIONING_PROFILE_SPECIFIER="" \
             | xcpretty && exit ${PIPESTATUS[0]}
 
       - name: Collect keyboard extension logs and crash reports
@@ -75,6 +71,10 @@ jobs:
           xcrun simctl spawn ${{ steps.sim.outputs.device_id }} log show --last 15m --style compact \
             --predicate 'process CONTAINS "PrototypeKeyboard" OR eventMessage CONTAINS "PrototypeKeyboard" OR eventMessage CONTAINS[c] "com.prototype.app"' \
             > keyboard-sim/extension_log.txt 2>&1 || true
+          # Unfiltered log: launch errors for the extension often don't name it.
+          xcrun simctl spawn ${{ steps.sim.outputs.device_id }} log show --last 15m --style compact \
+            > keyboard-sim/full_log.txt 2>&1 || true
+          grep -iE "extensionkit|pkd|keyboard.*(fail|error|denied)" keyboard-sim/full_log.txt | tail -n 100 || true
           tail -n 200 keyboard-sim/extension_log.txt || true
           cp ~/Library/Logs/DiagnosticReports/*PrototypeKeyboard* keyboard-sim/ 2>/dev/null || echo "no crash reports"
 
