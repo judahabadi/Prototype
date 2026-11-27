@@ -2,10 +2,10 @@ name: Keyboard simulator test
 
 # Boots an iPhone simulator, enables the Prototype keyboard, and runs
 # KeyboardSimTests (types typos with the real keyboard, saves screenshots).
+# Manual-only for now: in the CI simulator iOS registers the keyboard but never
+# launches it, so the test can't type yet. Run it from the Actions tab.
 
 on:
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 jobs:
