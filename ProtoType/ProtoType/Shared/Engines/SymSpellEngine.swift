@@ -73,7 +73,10 @@ final class SymSpellEngine {
         guard let url = bundle.url(forResource: "unigrams_en", withExtension: "txt"),
               let text = try? String(contentsOf: url, encoding: .utf8)
         else { return nil }
-        let engine = SymSpellEngine()
+        // prefixLength 5 keeps the delete index ~18MB for 50k words; the
+        // default 7 is ~50MB and blows the keyboard's ~40MB memory limit.
+        // CI enforces this via SymSpellBenchmarkTests.shippedConfigFitsBudget.
+        let engine = SymSpellEngine(maxEditDistance: 2, prefixLength: 5)
         engine.load(unigramsText: text)
         return engine
     }

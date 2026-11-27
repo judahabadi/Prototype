@@ -70,7 +70,6 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             | xcpretty && exit ${PIPESTATUS[0]}
-        continue-on-error: true
 
       - name: Export bar snapshots
         if: always()

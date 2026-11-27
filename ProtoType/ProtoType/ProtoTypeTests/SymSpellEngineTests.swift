@@ -108,8 +108,21 @@ struct SymSpellBenchmarkTests {
         }
     }
 
+    /// CI gate: the config `SymSpellEngine.english()` ships must stay well
+    /// under the keyboard extension's ~40MB limit (other engines need room too).
+    @Test func shippedConfigFitsBudget() throws {
+        let text = try loadUnigramsText()
+        let before = footprintMB()
+        let engine = SymSpellEngine(maxEditDistance: 2, prefixLength: 5)
+        engine.load(unigramsText: text)
+        let added = footprintMB() - before
+        print("[SymSpell gate] shipped config added \(String(format: "%.1f", added))MB (budget 25MB)")
+        #expect(added < 25, "SymSpell index uses \(added)MB; budget is 25MB")
+        #expect(!engine.lookup("teh").isEmpty)
+    }
+
     @Test func lookupLatencyOnRealDictionary() throws {
-        let engine = SymSpellEngine(maxEditDistance: 2, prefixLength: 7)
+        let engine = SymSpellEngine(maxEditDistance: 2, prefixLength: 5)
         engine.load(unigramsText: try loadUnigramsText())
 
         let typos = ["teh", "wnat", "keybaord", "definately", "recieve", "wrld"]
