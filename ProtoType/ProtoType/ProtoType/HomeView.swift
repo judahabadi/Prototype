@@ -1,3 +1,4 @@
+import AuthenticationServices
 import SwiftUI
 
 struct HomeView: View {
@@ -33,7 +34,9 @@ struct HomeView: View {
 private struct HomeTab: View {
     @Environment(AppState.self) private var appState
     @State private var manager = SubscriptionManager.shared
+    @State private var account = AccountManager.shared
     @State private var showPaywall = false
+    @State private var showDeleteAccount = false
     @State private var pickerSide: PickerSide?
 
     private enum PickerSide: Identifiable {
@@ -117,6 +120,31 @@ private struct HomeTab: View {
                     subtitle: "Play a sound on each key press",
                     isOn: $state.keyboardClicks
                 )
+            }
+
+            // Account
+            Section("Account") {
+                if account.isSignedIn {
+                    Label("Signed in with Apple", systemImage: "person.crop.circle.badge.checkmark")
+                        .font(.system(size: 16))
+                    Button("Sign Out") { account.signOut() }
+                        .font(.system(size: 16))
+                    Button("Delete Account", role: .destructive) { showDeleteAccount = true }
+                        .font(.system(size: 16))
+                } else {
+                    SignInWithAppleButton(.signIn) { request in
+                        request.requestedScopes = []
+                    } onCompletion: { result in
+                        account.handle(result)
+                    }
+                    .frame(height: 44)
+                }
+            }
+            .alert("Delete your account?", isPresented: $showDeleteAccount) {
+                Button("Delete", role: .destructive) { account.deleteAccount() }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This signs you out and removes your synced languages from iCloud. Your subscription is managed by Apple and isn't affected.")
             }
 
             // Subscription
