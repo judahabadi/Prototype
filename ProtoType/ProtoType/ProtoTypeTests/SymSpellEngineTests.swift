@@ -93,14 +93,14 @@ struct SymSpellBenchmarkTests {
     @Test func shippedConfigFitsBudget() throws {
         let text = try loadUnigramsText()
         let before = footprintMB()
-        let engine = SymSpellEngine(maxEditDistance: 2, prefixLength: 5)
+        let engine = SymSpellEngine(maxEditDistance: 1, prefixLength: 7)
         engine.load(unigramsText: text)
         let added = footprintMB() - before
-        let report = "[SymSpell gate] shipped config added \(String(format: "%.1f", added))MB (budget 25MB)"
+        let report = "[SymSpell gate] shipped config added \(String(format: "%.1f", added))MB (budget 15MB)"
         print(report)
         // Attached so CI's xcresult export surfaces the number (xcpretty hides prints).
         Attachment.record(report, named: "symspell_gate.txt")
-        #expect(added < 25, "SymSpell index uses \(added)MB; budget is 25MB")
+        #expect(added < 15, "SymSpell index uses \(added)MB; budget is 15MB")
         #expect(!engine.lookup("teh").isEmpty)
     }
 
@@ -132,7 +132,7 @@ struct SymSpellBenchmarkTests {
     }
 
     @Test func lookupLatencyOnRealDictionary() throws {
-        let engine = SymSpellEngine(maxEditDistance: 2, prefixLength: 5)
+        let engine = SymSpellEngine(maxEditDistance: 1, prefixLength: 7)
         engine.load(unigramsText: try loadUnigramsText())
 
         let typos = ["teh", "wnat", "keybaord", "definately", "recieve", "wrld"]
