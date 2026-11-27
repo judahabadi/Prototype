@@ -128,12 +128,18 @@ struct AutocorrectEngine {
         return min((dr * dr + dc * dc).squareRoot() / 2.0, 1.0)
     }
 
+    /// Swapped adjacent letters ("teh") are the most common typo, so they cost
+    /// less than an adjacent-key substitution (~0.5).
+    private static let transpositionCost = 0.4
+
     /// Levenshtein distance where substitutions are weighted by keyboard
-    /// proximity; insertions/deletions cost 1 each.
+    /// proximity, adjacent swaps cost `transpositionCost`, and
+    /// insertions/deletions cost 1 each.
     func weightedDistance(_ from: String, _ to: String) -> Double {
         let s = Array(from.lowercased()), t = Array(to.lowercased())
         if s.isEmpty { return Double(t.count) }
         if t.isEmpty { return Double(s.count) }
+        var prev2 = [Double](repeating: 0, count: t.count + 1)
         var prev = (0...t.count).map(Double.init)
         var cur = [Double](repeating: 0, count: t.count + 1)
         for i in 1...s.count {
@@ -141,8 +147,11 @@ struct AutocorrectEngine {
             for j in 1...t.count {
                 let sub = prev[j - 1] + substitutionCost(s[i - 1], t[j - 1])
                 cur[j] = min(sub, prev[j] + 1, cur[j - 1] + 1)
+                if i > 1, j > 1, s[i - 1] == t[j - 2], s[i - 2] == t[j - 1], s[i - 1] != s[i - 2] {
+                    cur[j] = min(cur[j], prev2[j - 2] + Self.transpositionCost)
+                }
             }
-            swap(&prev, &cur)
+            (prev2, prev, cur) = (prev, cur, prev2)
         }
         return prev[t.count]
     }
