@@ -58,6 +58,9 @@ struct SymSpellEngineTests {
 /// Budget: the whole keyboard extension must stay under ~40MB (jetsam reality,
 /// not the documented 70MB). If the index alone eats a large share at
 /// maxEditDistance 2, drop to prefixLength 5 or maxEditDistance 1 and re-run.
+/// Serialized: footprint deltas are process-wide, so a parallel test building
+/// its own index would be counted against the one being measured.
+@Suite(.serialized)
 struct SymSpellBenchmarkTests {
 
     private func loadUnigramsText() throws -> String {
@@ -83,6 +86,24 @@ struct SymSpellBenchmarkTests {
         return Double(info.phys_footprint) / 1_048_576.0
     }
 
+    /// Runs first in this serialized suite so freed-but-retained pages from
+    /// the other benchmarks can't hide its cost.
+    /// CI gate: the config `SymSpellEngine.english()` ships must stay well
+    /// under the keyboard extension's ~40MB limit (other engines need room too).
+    @Test func shippedConfigFitsBudget() throws {
+        let text = try loadUnigramsText()
+        let before = footprintMB()
+        let engine = SymSpellEngine(maxEditDistance: 2, prefixLength: 5)
+        engine.load(unigramsText: text)
+        let added = footprintMB() - before
+        let report = "[SymSpell gate] shipped config added \(String(format: "%.1f", added))MB (budget 25MB)"
+        print(report)
+        // Attached so CI's xcresult export surfaces the number (xcpretty hides prints).
+        Attachment.record(report, named: "symspell_gate.txt")
+        #expect(added < 25, "SymSpell index uses \(added)MB; budget is 25MB")
+        #expect(!engine.lookup("teh").isEmpty)
+    }
+
     @Test func memoryFootprint50kEnglish() throws {
         let text = try loadUnigramsText()
 
@@ -94,31 +115,20 @@ struct SymSpellBenchmarkTests {
             let buildSeconds = Date().timeIntervalSince(start)
             let after = footprintMB()
 
-            print("""
+            let line = """
             [SymSpell benchmark] maxEdit=\(maxEdit) prefixLength=\(prefix): \
             +\(String(format: "%.1f", after - before))MB \
             (\(String(format: "%.0f", before))→\(String(format: "%.0f", after))MB), \
             build \(String(format: "%.2f", buildSeconds))s, \
             \(engine!.wordCount) words, \(engine!.deleteIndexCount) delete keys
-            """)
+            """
+            print(line)
+            Attachment.record(line, named: "symspell_benchmark_\(maxEdit)_\(prefix).txt")
 
             // Sanity: it still corrects after loading the real dictionary.
             #expect(!engine!.lookup("teh").isEmpty)
             engine = nil   // release before the next configuration
         }
-    }
-
-    /// CI gate: the config `SymSpellEngine.english()` ships must stay well
-    /// under the keyboard extension's ~40MB limit (other engines need room too).
-    @Test func shippedConfigFitsBudget() throws {
-        let text = try loadUnigramsText()
-        let before = footprintMB()
-        let engine = SymSpellEngine(maxEditDistance: 2, prefixLength: 5)
-        engine.load(unigramsText: text)
-        let added = footprintMB() - before
-        print("[SymSpell gate] shipped config added \(String(format: "%.1f", added))MB (budget 25MB)")
-        #expect(added < 25, "SymSpell index uses \(added)MB; budget is 25MB")
-        #expect(!engine.lookup("teh").isEmpty)
     }
 
     @Test func lookupLatencyOnRealDictionary() throws {
