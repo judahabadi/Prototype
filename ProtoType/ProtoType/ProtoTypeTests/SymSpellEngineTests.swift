@@ -99,6 +99,10 @@ struct SymSpellBenchmarkTests {
     /// under the keyboard extension's ~40MB limit (other engines need room too).
     @Test func shippedConfigFitsBudget() throws {
         let text = try loadUnigramsText()
+        // Warm-up: the first engine built in the process also pays one-time
+        // runtime/allocator setup (~20MB in CI), which would swamp the number.
+        let warmUp = SymSpellEngine(maxEditDistance: 1, prefixLength: 7)
+        warmUp.load(unigramsText: text, limit: 2_000)
         let before = footprintMB()
         let engine = SymSpellEngine(maxEditDistance: 1, prefixLength: 7)
         engine.load(unigramsText: text)
